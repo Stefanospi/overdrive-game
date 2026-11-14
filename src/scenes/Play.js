@@ -3,7 +3,7 @@ import { K, W, H, LH, px, COLORS, FONT_PS, FONT_VT, PARAMS } from '../config.js'
 import { registerMars } from '../sprites.js';
 import { drawBackdrop, drawLabelStrip, textTexture, buildWindow } from '../ui.js';
 import { attachFx } from '../fx.js';
-import { TEXTS, EGG, pick } from '../texts.js';
+import { TEXTS, EGG, FORGER, pick } from '../texts.js';
 import { settings, reducedFx, calibration } from '../settings.js';
 import { EP, track } from '../campaign.js';
 import { LEVELS, FIRST_LEVEL, COUNT_IN, buildChart } from '../levels.js';
@@ -149,6 +149,8 @@ export class Play extends Phaser.Scene {
     this.tutorial = L.n === 1 && !settings.get('tutorialDone', false) && !this.auto;
     this.missRun = 0;
     this.shieldUntil = 0;
+    this.forgeUntil = 0;
+    this.forgeDone = false;
     this.badge = null;
     this.giftDone = false;
     track('level_start', { level: L.id });
@@ -266,7 +268,8 @@ export class Play extends Phaser.Scene {
     this.mars = this.add.image(px(3), px(17), 'mars-neutral').setOrigin(0).setScale(K * 2).setCrop(0, 0, 36, 32);
     // title strip shown when the helper takes over the window
     const hbar = this.add.graphics().fillStyle(COLORS.redDark, 1).fillRect(px(2), px(2), px(70), px(12));
-    const htxt = this.add.text(px(6), px(4), EGG.name.slice(0, 10) + '.exe', ps(5, '#ffffff'));
+    const htxt = this.add.text(px(6), px(4), EGG.name, ps(5, '#ffffff'));
+    this.helperTitle = htxt;
     this.helperBar = this.add.container(0, 0, [hbar, htxt]).setVisible(false);
     this.helper = false;
     win.add([screen, this.mars, this.helperBar]);
@@ -434,6 +437,11 @@ export class Play extends Phaser.Scene {
     n.odd = (n.odd || 0) + (this.od - o0);
   }
 
+  // Gabriel's ID FALSA: for a few beats the Ministry takes you for a legitimate user, points x2.
+  forged() {
+    return this.songBeat() < this.forgeUntil;
+  }
+
   shielded() {
     return this.songBeat() < this.shieldUntil;
   }
@@ -459,7 +467,7 @@ export class Play extends Phaser.Scene {
   }
 
   addScore(points) {
-    const mult = Math.min(4, 1 + Math.floor(this.combo / 10)) * (this.odMode ? 2 : 1);
+    const mult = Math.min(4, 1 + Math.floor(this.combo / 10)) * (this.odMode ? 2 : 1) * (this.forged() ? 2 : 1);
     this.score += points * mult;
   }
 
@@ -498,10 +506,11 @@ export class Play extends Phaser.Scene {
   }
 
   // The helper (Easter egg) borrows the Mars window for a moment.
-  helperSay(word, expr, ms) {
+  helperSay(word, expr, ms, who = 'girl') {
     this.helper = true;
     this.helperBar.setVisible(true);
-    this.mars.setTexture('girl-' + expr).setCrop(0, 0, 36, 32);
+    this.helperTitle.setText(who === 'grafico' ? FORGER.name : EGG.name);
+    this.mars.setTexture(who + '-' + expr).setCrop(0, 0, 36, 32);
     this.flashWord(word, ms);
     this.quietUntil = this.time.now + ms + 1500;
     if (this.marsTimer) this.marsTimer.remove(false);
@@ -629,10 +638,10 @@ export class Play extends Phaser.Scene {
     disc.fillStyle(0x000000, 0.88).fillCircle(0, 0, r);
     disc.lineStyle(px(3), COLORS.silver, 1).strokeCircle(0, 0, r);
     const s = K * 1.5;
-    const face = this.add.image(0, -(26 * s) / 2, 'girl-happy').setOrigin(0.5, 0).setScale(s).setCrop(0, 0, 36, 26);
+    const face = this.add.image(0, -(26 * s) / 2, kind === 'forge' ? 'grafico-happy' : 'girl-happy').setOrigin(0.5, 0).setScale(s).setCrop(0, 0, 36, 26);
     const ring = this.add.graphics();
     const label = this.add
-      .text(0, r + px(9), TEXTS.helper.spawn, { fontFamily: FONT_PS, fontSize: px(7) + 'px', color: '#ffffff' })
+      .text(0, r + px(9), kind === 'forge' ? TEXTS.forger.spawn : TEXTS.helper.spawn, { fontFamily: FONT_PS, fontSize: px(7) + 'px', color: '#ffffff' })
       .setOrigin(0.5);
     c.add([disc, face, ring, label]);
     c.setSize(r * 2 + px(16), r * 2 + px(16));
@@ -673,6 +682,14 @@ export class Play extends Phaser.Scene {
     const kind = b.kind;
     this.removeBadge();
     const T = TEXTS.helper;
+    if (kind === 'forge') {
+      this.forgeUntil = this.songBeat() + 16;
+      this.flash = 0.4;
+      this.helperSay(TEXTS.forger.forge, 'wink', 1300, 'grafico');
+      this.time.delayedCall(1400, () => !this.over && this.flashWord(TEXTS.forger.double, 900));
+      track('backup_used', { kind });
+      return;
+    }
     this.shieldUntil = this.songBeat() + 8;
     if (kind === 'rewind' && this.buffer) {
       this.rewindTrack();
@@ -1010,6 +1027,10 @@ export class Play extends Phaser.Scene {
       this.giftDone = true;
       this.spawnBadge('gift');
     }
+    if (!this.forgeDone && L.forgeBeat !== undefined && sb >= L.forgeBeat && !this.badge && !this.over) {
+      this.forgeDone = true;
+      this.spawnBadge('forge');
+    }
     this.drawTutorial(sb);
     this.drawStage(sb, dt, bands, bass);
     this.drawRoad(sb);
@@ -1294,7 +1315,7 @@ export class Play extends Phaser.Scene {
     const odInt = Math.round(this.od);
     if (s.od !== odInt) this.odText.setText(`${TEXTS.ui.overdrive} ${String((s.od = odInt)).padStart(3, '0')}%`);
     if (s.combo !== this.combo) this.comboText.setText(String((s.combo = this.combo)));
-    const mult = Math.min(4, 1 + Math.floor(this.combo / 10)) * (this.odMode ? 2 : 1);
+    const mult = Math.min(4, 1 + Math.floor(this.combo / 10)) * (this.odMode ? 2 : 1) * (this.forged() ? 2 : 1);
     if (s.mult !== mult) this.multText.setText('x' + (s.mult = mult));
   }
 }

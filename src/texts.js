@@ -6,8 +6,12 @@
 
 export const pick = (list) => list[Math.floor(Math.random() * list.length)];
 
-// Easter egg: the girlfriend. Change the name here, it is used everywhere.
-export const EGG = { name: 'LEI' };
+// OVERDRIVE CREW. Mars (Stefano) is the virus; the other members are named here and used
+// everywhere. EGG is Adriana (the backup, formerly the Easter egg), FORGER is Gabriel
+// (the forger, who also draws the cover). New members: add an entry and a sprite.
+export const EGG = { name: 'ADRIANA.EXE' };
+export const FORGER = { name: 'GABRIEL.EXE' };
+export const CREW = 'OVERDRIVE CREW';
 
 export const TEXTS = {
   // ---- boot screen ---------------------------------------------------------
@@ -19,6 +23,7 @@ export const TEXTS = {
     'Firewall.................. ATTIVO',
     'Caricamento rivoluzione.... NEGATO',
     'Whitelist utenti: 1 (' + EGG.name + ')',
+    'Squadra: ' + CREW + ' (in ascolto)',
     'ATTENZIONE: intrusione in corso',
   ],
   // the fake mandatory update the player "installs"
@@ -77,8 +82,8 @@ export const TEXTS = {
   // Each chapter is a list of panels. `who` is 'decree' (a document), 'ministro',
   // 'mars', 'girl' or 'quiete'; `expr` is the face: mars has neutral, sad, angry,
   // shout, win, surprised, glitch; ministro has calm, angry; girl has neutral,
-  // happy, wink, surprised; quiete has smile, error.
-  names: { mars: 'MARS', ministro: 'IL MINISTRO', decree: 'DECRETO N.140', girl: EGG.name, quiete: 'QUIETE.SYS' },
+  // happy, wink, surprised; grafico has neutral, happy, wink, surprised; quiete has smile, error.
+  names: { mars: 'MARS', ministro: 'IL MINISTRO', decree: 'DECRETO N.140', girl: EGG.name, grafico: FORGER.name, quiete: 'QUIETE.SYS' },
   story: {
     skip: 'SALTA',
     next: 'TOCCA',
@@ -114,6 +119,9 @@ export const TEXTS = {
         { who: 'ministro', expr: 'angry', text: 'Chi ha lasciato entrare quell\'anomalia?' },
         { who: 'mars', expr: 'win', text: 'Errore 140: gioia non autorizzata.' },
         { who: 'girl', expr: 'happy', text: 'Sei stato bravissimo. Sono fiera di te.' },
+        { caption: 'OVERDRIVE CREW // CANALE PRIVATO // 2 MEMBRI', text: 'Il canale è chiuso. Parla solo la squadra.' },
+        { who: 'mars', expr: 'neutral', text: 'Siamo in due. Per il Proxy serve di più.' },
+        { who: 'girl', expr: 'wink', text: 'Conosco uno che falsifica qualsiasi documento.' },
         { who: 'mars', expr: 'shout', text: 'Primo quartiere acceso. Ne restano quattro.' },
       ],
     },
@@ -137,6 +145,54 @@ export const TEXTS = {
         { who: 'mars', expr: 'angry', text: 'Un virus non chiede il permesso. Si replica.' },
       ],
     },
+    // ---- chapter 2: PROXY, track ACID. Gabriel joins; he forges the identity ----------
+    acid_intro: {
+      chapter: 'CAPITOLO 2',
+      title: 'IDENTITÀ FALSA',
+      panels: [
+        { scene: 'monitors', caption: 'PROXY, 03:10', who: 'mars', expr: 'surprised', sfx: 'static', text: 'Il Proxy mi ha tracciato. Hanno il mio indirizzo.' },
+        { who: 'quiete', expr: 'smile', text: 'Utente non identificato. Si identifichi, prego.' },
+        { who: 'girl', expr: 'surprised', text: 'Il canale si chiude. Serve un\'identità. Subito.' },
+        { who: 'grafico', expr: 'neutral', text: 'Ci penso io. Falsifico tutto. Anche i timbri.' },
+        { who: 'mars', expr: 'neutral', text: 'E tu chi saresti?' },
+        { who: 'grafico', expr: 'wink', text: 'Gabriel. Disegno copertine. E documenti falsi.' },
+        { caption: 'OVERDRIVE CREW // CANALE PRIVATO // 3 MEMBRI', text: 'La squadra è al completo. Per ora.' },
+        { who: 'girl', expr: 'happy', text: 'Io tengo aperto il canale. Se cadi, ti riavvolgo.' },
+        { who: 'grafico', expr: 'happy', text: 'Io ti do un volto pulito. Tu suoni, io timbro.' },
+        { who: 'mars', expr: 'shout', text: 'Proxy. Tocca alla OVERDRIVE CREW. Andiamo.' },
+      ],
+    },
+    acid_high: {
+      chapter: 'CAPITOLO 2',
+      title: 'PROXY BUCATO',
+      panels: [
+        { scene: 'city_on', caption: 'QUARTIERE PROXY, 03:40', sfx: 'crowd', text: 'Le finestre si riaccendono. Una dopo l\'altra.' },
+        { who: 'ministro', expr: 'angry', text: 'Quell\'utente era registrato. Chi lo ha firmato?' },
+        { who: 'grafico', expr: 'happy', text: 'Timbro autentico. Almeno questo, l\'ho fatto bene.' },
+        { who: 'girl', expr: 'happy', text: 'Canale sicuro. Siamo tutti dentro.' },
+        { who: 'mars', expr: 'win', text: 'Secondo quartiere acceso. Ne restano tre.' },
+      ],
+    },
+    acid_mid: {
+      chapter: 'CAPITOLO 2',
+      title: 'TIMBRO A METÀ',
+      panels: [
+        { who: 'ministro', expr: 'calm', text: 'Un utente anomalo. Verificheremo con calma.' },
+        { who: 'grafico', expr: 'surprised', text: 'Il timbro regge a metà. Serve un altro giro.' },
+        { who: 'girl', expr: 'happy', text: 'Ci sei quasi. Io sono qui.' },
+        { who: 'mars', expr: 'angry', text: 'Un\'identità vera non si falsifica. Si riprende.' },
+      ],
+    },
+    acid_low: {
+      chapter: 'CAPITOLO 2',
+      title: 'IDENTITÀ RESPINTA',
+      panels: [
+        { who: 'quiete', expr: 'smile', text: 'Identità respinta. Posso offrirle il silenzio?' },
+        { who: 'grafico', expr: 'surprised', text: 'Timbro scaduto. Lo rifaccio, dammi un minuto.' },
+        { who: 'mars', expr: 'sad', text: 'Tracciato. Ma non fermato.' },
+        { who: 'girl', expr: 'neutral', text: 'Respira. Si ricomincia, tutti insieme.' },
+      ],
+    },
   },
 
   // ---- during a level: giant words only ------------------------------------
@@ -150,6 +206,15 @@ export const TEXTS = {
       { bar: 14, expr: 'angry', word: 'TRE COLPI' },
       { bar: 17, expr: 'neutral', word: 'TIENI' },
       { bar: 21, expr: 'win', word: 'FIREWALL GIÙ' },
+    ],
+    acid: [
+      { bar: -2, expr: 'neutral', word: 'TRACCIATO' },
+      { bar: 2, expr: 'neutral', word: 'PROXY' },
+      { bar: 5, expr: 'surprised', word: 'DROP IN ARRIVO' },
+      { bar: 6, expr: 'shout', word: 'IDENTITÀ FALSA' },
+      { bar: 12, expr: 'angry', word: 'NON FERMARTI' },
+      { bar: 18, expr: 'neutral', word: 'MASCHERA TIENE' },
+      { bar: 26, expr: 'win', word: 'PROXY GIÙ' },
     ],
     dub: [
       { bar: -1, expr: 'neutral', word: 'SCANSIONE' },
@@ -172,10 +237,16 @@ export const TEXTS = {
   // few seconds. Tapping it fires a power-up (see Play.useBackup).
   helper: {
     root: ['BACKUP'], // she cheers when root access opens
-    spawn: 'TOCCA LEI',
+    spawn: 'TOCCA ADRIANA',
     rewind: 'REWIND', // after a streak of misses: the track goes back a few bars and replays
     gift: 'BONUS ROOT', // the free one, mid-level
     shield: 'SCUDO',
+  },
+  // Gabriel's power (chapter 2): a forged ID. Tappable badge, points x2 for 16 beats.
+  forger: {
+    spawn: 'TOCCA GABRIEL',
+    forge: 'ID FALSA',
+    double: 'PUNTI x2',
   },
   overdrive: ['SOGLIA SUPERATA'],
   overdriveMode: ['ACCESSO ROOT'],

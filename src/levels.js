@@ -11,6 +11,8 @@
 
 import brazilianTiming from './charts/brazilian-dub.js';
 import brazilianClip from './music/brazilian-dub.clip.mp3';
+import acidTiming from './charts/acid.js';
+import acidClip from './music/acid.clip.mp3';
 
 const EM = [164.81, 196.0, 246.94];
 const C = [130.81, 164.81, 196.0];
@@ -63,7 +65,55 @@ const BRAZILIAN_PATTERNS = {
   z: ['x..x..x.........', '........x.......', '................'],
 };
 
+// ACID (techno), 2:50 to 3:45 of the track: 6 playable bars of build-up, then 22 of
+// drop. Four on the floor: lane 0 is the kick, lane 1 the offbeat acid line (steps 2, 6,
+// 10, 14), lane 2 holds on the sub. The build thickens the kick and ends on a roll.
+const ACID_PATTERNS = {
+  //    lane 0 (kick)       lane 1 (offbeat acid)  lane 2 (sub holds)
+  b1: ['x...x...........', '......x.........', '................'],
+  b2: ['x...x...x.......', '......x.....x...', '................'],
+  b3: ['x...x...x...x...', '..x...x.........', '................'],
+  b4: ['x...x...x...x...', '..x...x...x...x.', '................'],
+  b5: ['x...x...x...x...', '..x...x...x.x.x.', '................'],
+  b6: ['x.x.x.x.x.x.x.x.', '................', '................'],
+  d1: ['x...x...x...x...', '................', 'h-------........'],
+  d2: ['x...x...x...x...', '..x...x...x...x.', '................'],
+  d3: ['x.......x.......', '..x...x...x...x.', 'h---....h---....'],
+  d4: ['x...x...x...x...', '..x.....x.....x.', '........h-------'],
+  f1: ['x...x...x.x.x.x.', '......x...x...x.', '................'],
+  z: ['x...............', 'x...............', 'x...............'],
+};
+
 export const LEVELS = {
+  acid: {
+    id: 'acid',
+    n: 2,
+    title: 'ACID',
+    bpm: acidTiming.bpm,
+    lanes: 3,
+    approach: 3,
+    synth: false,
+    giftBeat: 56, // beat where Adriana offers her free BONUS ROOT
+    forgeBeat: 84, // beat where Gabriel offers ID FALSA
+    track: {
+      url: acidClip,
+      lead: acidTiming.lead,
+      length: acidTiming.length,
+      fadeIn: 3.4,
+      fadeOut: 0.9,
+    },
+    patterns: ACID_PATTERNS,
+    bars: [
+      ['build', 'b1'], ['build', 'b2'], ['build', 'b3'], ['build', 'b4'], ['build', 'b5'], ['build', 'b6'],
+      ['drop', 'd1'], ['drop', 'd2'], ['drop', 'd1'], ['drop', 'd3'],
+      ['drop', 'd2'], ['drop', 'd4'], ['drop', 'd2'], ['drop', 'f1'],
+      ['drop', 'd1'], ['drop', 'd2'], ['drop', 'd3'], ['drop', 'd4'],
+      ['drop', 'd2'], ['drop', 'd3'], ['drop', 'd2'], ['drop', 'f1'],
+      ['drop', 'd4'], ['drop', 'd2'], ['drop', 'd3'], ['drop', 'd1'],
+      ['drop', 'd2'], ['drop', 'z'],
+    ],
+  },
+
   brazilian: {
     id: 'brazilian',
     n: 1,
@@ -189,7 +239,7 @@ export function buildChart(level) {
 // level is added to LEVELS above.
 export const ROADMAP = [
   { layer: 'FIREWALL', id: 'brazilian' },
-  { layer: 'PROXY', id: null },
+  { layer: 'PROXY', id: 'acid' },
   { layer: 'ANAGRAFE', id: null },
   { layer: 'KERNEL', id: null },
   { layer: 'SERVER', id: null },

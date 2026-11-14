@@ -55,7 +55,7 @@ export class Hub extends Phaser.Scene {
       }
       this.add.text(px(96), px(y + 36), status, { fontFamily: FONT_VT, fontSize: px(17) + 'px', color: lit ? '#ff2a2a' : '#8a8a94' });
       if (level) {
-        button(this, W - px(58), px(y + 22), px(86), px(30), lit ? TEXTS.ui.again : 'ENTRA', () => this.go('Play', { level: node.id }), { primary: !lit, size: 8, depth: 6 });
+        button(this, W - px(58), px(y + 22), px(86), px(30), lit ? TEXTS.ui.again : 'ENTRA', () => this.enter(node.id), { primary: !lit, size: 8, depth: 6 });
       }
     });
 
@@ -67,6 +67,14 @@ export class Hub extends Phaser.Scene {
       })
       .setOrigin(0.5);
     button(this, W / 2, px(LH - 46), px(150), px(28), TEXTS.ui.back, () => this.go('Boot'), { size: 8, depth: 6 });
+  }
+
+  // A level with a chapter of its own (`<id>_intro`) plays the story first.
+  enter(id) {
+    const chapter = id + '_intro';
+    const play = { scene: 'Play', data: { level: id } };
+    if (TEXTS.story[chapter]) this.go('Story', { id: chapter, next: play });
+    else this.go(play.scene, play.data);
   }
 
   go(scene, data) {

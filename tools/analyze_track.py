@@ -1,6 +1,6 @@
 """Cuts a playable clip out of a track and writes a first-draft note chart for it.
 
-    python tools/analyze_track.py
+    python tools/analyze_track.py [id]      (default: brazilian-dub; npm run track -- acid)
 
 Needs: pip install librosa soundfile
 
@@ -26,17 +26,32 @@ import soundfile as sf  # noqa: E402
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
 
-TRACK = {
-    'id': 'brazilian-dub',
-    'source': 'src/music/stephen mars - brazilian dub (ms v1).mp3',
-    'bpm': 140.0,
-    'from': 27.0,  # seconds: the clip never starts before this
-    'to': 68.65,  # seconds: the clip never ends after this
-    'drop_search': (38.0, 43.0),
-    'bars_before_drop': 8,  # bars of build-up inside the clip
-    'bars_after_drop': 16,
-    'lead_bars': 2,  # bars at the start with no notes: the track fades in here
+TRACKS = {
+    'brazilian-dub': {
+        'id': 'brazilian-dub',
+        'source': 'src/music/stephen mars - brazilian dub (ms v1).mp3',
+        'bpm': 140.0,
+        'from': 27.0,  # seconds: the clip never starts before this
+        'to': 68.65,  # seconds: the clip never ends after this
+        'drop_search': (38.0, 43.0),
+        'bars_before_drop': 8,  # bars of build-up inside the clip
+        'bars_after_drop': 16,
+        'lead_bars': 2,  # bars at the start with no notes: the track fades in here
+    },
+    # ACID (techno), 2:50 to 3:45 of the track; the drop lands near 3:05
+    'acid': {
+        'id': 'acid',
+        'source': 'src/music/stephen mars - acid (extended ms v1).mp3',
+        'bpm': 140.0,
+        'from': 170.0,
+        'to': 225.0,
+        'drop_search': (183.0, 188.0),
+        'bars_before_drop': 8,
+        'bars_after_drop': 22,
+        'lead_bars': 2,
+    },
 }
+TRACK = TRACKS['brazilian-dub']
 
 SR = 44100
 HOP = 256
@@ -202,4 +217,5 @@ def main(cfg=TRACK):
 
 
 if __name__ == '__main__':
-    main()
+    import sys
+    main(TRACKS[sys.argv[1]] if len(sys.argv) > 1 else TRACK)

@@ -12,6 +12,10 @@ PAL = {
     # the helper (Easter egg): long dark hair, green eyes, grey oversized hoodie, ripped denim shorts
     'L': '#34241e', 'l': '#563b2f', 'E': '#8aa07a', 'Y': '#7d828e', 'y': '#5a5f6b',
     'D': '#b4c6d6', 'd': '#7f95ab', 'Z': '#b8736c',
+    # the cover artist: navy backpack, forearm tattoo
+    'F': '#232b4a', 'Q': '#3b4670', 'f': '#4a4a5c',
+    # gold (the Minister's trim, the guard's badge)
+    'g': '#e0b84a', 'q': '#b8902e',
 }
 
 
@@ -215,54 +219,68 @@ def build(expr):
 
 
 def build_minister(expr):
-    """The villain: grey suit, red tie, and a censorship bar where the eyes should be."""
+    """The villain: a filthy-rich dandy. Top hat, black tailcoat, white gloves, gold buttons,
+    watch chain and cane, a cigar, and a censorship bar where the eyes should be."""
     g = new()
-    # trousers and shoes
+    # trousers and patent shoes
     sr(g, 10, 44, 17, 52, 'P')
     sr(g, 13, 46, 13, 52, 'p')
     sr(g, 7, 53, 16, 55, 'B')
     sr(g, 8, 53, 10, 53, 'b')
-    # jacket with wide shoulders, arms
-    sr(g, 5, 28, 17, 30, 'A')
-    sr(g, 7, 31, 17, 44, 'A')
-    sr(g, 3, 30, 6, 46, 'A')
-    sr(g, 7, 32, 7, 46, 'a')
-    sr(g, 7, 44, 17, 44, 'a')
-    sr(g, 3, 47, 6, 49, 'N')
-    sr(g, 6, 47, 6, 49, 'n')
-    # shirt, lapels, tie
+    # tailcoat with wide shoulders, sleeves, white gloves
+    sr(g, 5, 28, 17, 30, 'T')
+    sr(g, 7, 31, 17, 44, 'T')
+    sr(g, 3, 30, 6, 46, 'T')
+    sr(g, 7, 32, 7, 46, 'p')
+    sr(g, 7, 44, 17, 44, 'p')
+    sr(g, 3, 45, 6, 46, 'e')
+    sr(g, 3, 47, 6, 49, 'W')
+    sr(g, 6, 47, 6, 49, 'w')
+    # shirt front, satin lapels, red bow tie, gold buttons and watch chain
     for r in range(28, 37):
         xl = 13 + (r - 28) // 2
         sr(g, xl, r, 17, r, 'W')
-        spx(g, xl - 1, r, 'a')
-    sr(g, 17, 29, 17, 39, 'R')
-    sr(g, 16, 29, 17, 30, 'R')
-    px(g, 18, 41, 'a')
-    px(g, 18, 43, 'a')
-    px(g, 10, 33, 'R')  # party pin
-    # neck and a long bald head
+        spx(g, xl - 1, r, 'p')
+    sr(g, 15, 29, 17, 30, 'R')
+    sr(g, 17, 29, 17, 30, 'q')
+    for y in (34, 37, 40):
+        px(g, 17, y, 'g')
+        px(g, 18, y, 'g')
+    for x in range(10, 15):
+        px(g, x, 38, 'g')
+    px(g, 10, 36, 'g')
+    px(g, 10, 33, 'e')  # pocket square
+    px(g, 11, 33, 'e')
+    # gold-topped cane in the right hand
+    rect(g, 30, 40, 31, 41, 'g')
+    rect(g, 30, 42, 30, 55, 'B')
+    rect(g, 31, 40, 31, 55, 'q')
+    # neck, plump pale head, top hat
     sr(g, 15, 24, 17, 27, 'n')
-    disc(g, 17.5, 14, 8, 11, 'N')
-    sr(g, 9, 12, 9, 16, 'N')
-    for y in range(3, 6):
-        for x in range(W):
-            if g[y][x] == 'N':
-                g[y][x] = 'a'
-    sr(g, 10, 6, 10, 11, 'a')
-    sr(g, 17, 16, 17, 18, 'n')
-    sr(g, 12, 22, 17, 24, 'n')
+    disc(g, 17.5, 15, 8, 10, 'N')
+    sr(g, 9, 13, 9, 17, 'N')
+    sr(g, 17, 17, 17, 19, 'n')
+    sr(g, 12, 23, 17, 25, 'n')
+    sr(g, 10, 0, 17, 4, 'T')
+    sr(g, 12, 1, 12, 3, 'p')
+    sr(g, 10, 4, 17, 4, 'R')
+    sr(g, 6, 5, 17, 6, 'T')
     if expr == 'calm':
         rect(g, 6, 11, 29, 15, 'X')
         sr(g, 15, 21, 17, 21, 'K')
+        rect(g, 18, 21, 23, 21, 'M')  # cigar
+        px(g, 24, 21, 'R')
+        sr(g, 13, 19, 14, 19, 'w')  # waxed moustache
     else:
-        # bar broken into an angry V, mouth open
+        # bar broken into an angry V, mouth open, cigar dropped
         for x in range(6, 18):
             off = (x - 6) // 4
             for y in range(10 + off, 15 + off):
                 spx(g, x, y, 'X')
         sr(g, 14, 20, 17, 22, 'K')
-        sr(g, 13, 22, 13, 23, 'K')  # corners pulled down: a shout, not a grin
+        sr(g, 13, 22, 13, 23, 'K')
         sr(g, 16, 22, 17, 22, 'R')
+        sr(g, 13, 19, 14, 19, 'w')
     return g
 
 
@@ -350,37 +368,148 @@ def build_girl(expr):
     return g
 
 
-def build_quiete(expr):
-    """The Ministry's servile assistant (QUIETE.SYS): a smiling beige CRT on a tiny grey body."""
+def build_grafico(expr):
+    """The cover artist (from img_yyybrid): short tousled dark hair, brown eyes, small stud
+    earring, black tee, navy backpack with a red/white stripe, forearm tattoo, phone in hand."""
     g = new()
-    sr(g, 10, 44, 17, 52, 'P')
+    # backpack behind the left shoulder (viewer's left), with its red stripe
+    rect(g, 2, 30, 8, 46, 'F')
+    rect(g, 3, 31, 4, 45, 'Q')
+    rect(g, 2, 36, 2, 44, 'R')
+    # jeans and white sneakers
+    sr(g, 10, 44, 17, 52, 'J')
+    sr(g, 17, 46, 17, 52, 'k')
+    sr(g, 7, 53, 16, 55, 'W')
+    sr(g, 7, 55, 16, 55, 'G')
+    sr(g, 9, 53, 11, 53, 'w')
+    # black tee, short sleeves
+    sr(g, 9, 29, 17, 29, 'T')
+    sr(g, 8, 30, 17, 44, 'T')
+    sr(g, 8, 30, 8, 44, 'P')
+    sr(g, 12, 33, 12, 40, 'P')
+    sr(g, 3, 30, 7, 36, 'T')
+    # left arm hangs (tattoo), right arm bent holding the phone
+    rect(g, 3, 37, 6, 46, 'S')
+    for (x, y) in ((4, 39), (5, 41), (4, 42), (6, 43), (4, 44), (5, 45), (3, 40)):
+        px(g, x, y, 'f')
+    rect(g, 3, 46, 6, 47, 'S')
+    rect(g, 29, 37, 32, 41, 'S')
+    rect(g, 26, 39, 31, 43, 'S')
+    rect(g, 26, 31, 29, 40, 'B')
+    rect(g, 27, 32, 28, 38, 'e')
+    rect(g, 26, 40, 27, 43, 'S')
+    # backpack strap across the left shoulder
+    for y in range(29, 40):
+        px(g, 10 + (y - 29) // 3, y, 'F')
+        px(g, 11 + (y - 29) // 3, y, 'Q')
+    # neck and head
+    sr(g, 14, 25, 17, 29, 'S')
+    sr(g, 14, 28, 17, 29, 's')
+    disc(g, 17.5, 17, 7.6, 9.2, 'S')
+    # ears and the stud on the viewer's left
+    sr(g, 9, 16, 10, 20, 'S')
+    px(g, 9, 21, 'e')
+    px(g, 9, 22, 'e')
+    # hair: short, tousled, swept over the forehead
+    hair = set()
+    disc(g, 17.5, 10, 9.2, 5.6, 'K', hair)
+    for x in range(9, 27):
+        bottom = 9 + ((x * 5) % 3)
+        for y in range(7, bottom + 1):
+            px(g, x, y, 'K')
+            hair.add((x, y))
+    sr(g, 9, 11, 10, 13, 'K')
+    for (x, y) in hair:
+        if g[y][x] == 'K' and (x * 3 + y * 5) % 7 == 0:
+            g[y][x] = 'H'
+    # nose, light stubble
+    sr(g, 17, 18, 17, 20, 's')
+    for y in range(22, 26):
+        for x in range(W):
+            if g[y][x] == 'S' and (x * 2 + y) % 5 == 0:
+                g[y][x] = 's'
+    # eyes: heavy brows, brown iris, bored lids
+    brow_y = 12 if expr == 'surprised' else 13
+    sr(g, 11, brow_y, 14, brow_y, 'K')
+    sr(g, 12, 15, 14, 16, 'W')
+    sr(g, 13, 15, 14, 16, 'M')
+    px(g, 14, 16, 'K')
+    px(g, 21, 16, 'K')
+    if expr in ('neutral', 'happy'):
+        sr(g, 12, 15, 14, 15, 's')
+    if expr == 'surprised':
+        sr(g, 12, 14, 14, 17, 'W')
+        sr(g, 13, 15, 14, 16, 'K')
+    if expr == 'wink':
+        rect(g, 21, 15, 23, 16, 'S')
+        rect(g, 21, 16, 23, 16, 'K')
+    # mouth
+    if expr in ('happy', 'wink'):
+        sr(g, 15, 23, 17, 23, 'W')
+        sr(g, 15, 24, 17, 24, 'm')
+        spx(g, 14, 22, 'm')
+    elif expr == 'surprised':
+        sr(g, 16, 23, 17, 24, 'K')
+    else:
+        sr(g, 15, 23, 17, 23, 'm')
+    return g
+
+
+def build_quiete(expr):
+    """The Ministry's servile guard (QUIETE.SYS): navy uniform, peaked cap with a badge,
+    mirrored shades, baton, and a smile that never changes."""
+    g = new()
+    # legs and boots
+    sr(g, 10, 44, 17, 52, 'F')
+    sr(g, 13, 46, 13, 52, 'k')
     sr(g, 8, 53, 16, 55, 'B')
     sr(g, 9, 53, 11, 53, 'b')
-    sr(g, 8, 30, 17, 43, 'A')
-    sr(g, 4, 31, 7, 44, 'A')
-    sr(g, 4, 45, 6, 47, 'W')
-    sr(g, 17, 31, 17, 41, 'R')
+    # uniform: body, sleeves, gloves, belt and buckle, chest badge
+    sr(g, 8, 30, 17, 43, 'F')
+    for y in range(32, 40):
+        spx(g, 9, y, 'Q')
+    sr(g, 4, 31, 7, 44, 'F')
+    sr(g, 4, 31, 6, 32, 'e')  # shoulder patch
+    sr(g, 4, 45, 6, 47, 'T')
+    sr(g, 8, 41, 17, 42, 'B')
+    px(g, 17, 41, 'g')
+    px(g, 18, 41, 'g')
+    rect(g, 10, 34, 11, 36, 'g')
+    px(g, 11, 36, 'q')
+    # white collar and black tie
     sr(g, 15, 29, 17, 30, 'W')
-    sr(g, 15, 27, 17, 28, 'a')
-    # monitor head
-    sr(g, 5, 4, 17, 26, 'N')
-    sr(g, 5, 24, 17, 26, 'n')
-    sr(g, 8, 7, 17, 22, 'K')
-    # paperclip antenna
-    sr(g, 15, 1, 15, 3, 'w')
-    sr(g, 16, 0, 17, 0, 'w')
+    sr(g, 17, 31, 17, 36, 'T')
+    # baton in the right hand
+    rect(g, 30, 36, 31, 47, 'B')
+    rect(g, 30, 36, 30, 38, 'b')
+    # neck and head
+    sr(g, 15, 25, 17, 29, 's')
+    disc(g, 17.5, 17, 7.6, 9, 'S')
+    sr(g, 9, 16, 10, 20, 'S')
+    # peaked cap with a badge
+    sr(g, 9, 4, 17, 10, 'F')
+    sr(g, 9, 9, 17, 9, 'Q')
+    sr(g, 6, 11, 17, 12, 'B')
+    px(g, 17, 7, 'e')
+    px(g, 18, 7, 'e')
+    px(g, 17, 6, 'g')
+    px(g, 18, 6, 'g')
+    # nose and shades
+    sr(g, 17, 18, 17, 20, 's')
     if expr == 'smile':
-        sr(g, 11, 11, 13, 14, 'W')
-        sr(g, 12, 12, 13, 14, 'R')
-        sr(g, 11, 19, 17, 19, 'W')
-        sr(g, 10, 18, 10, 18, 'W')
+        rect(g, 10, 14, 25, 16, 'K')
+        spx(g, 12, 14, 'b')
+        sr(g, 14, 22, 17, 22, 'W')
+        sr(g, 14, 23, 17, 23, 'm')
+        spx(g, 13, 21, 'm')
     else:
-        # error: crossed eyes, flat mouth
+        # error: lenses glow red, the smile is gone
+        rect(g, 10, 14, 25, 16, 'R')
         for i in range(3):
-            spx(g, 11 + i, 11 + i, 'R')
-            spx(g, 13 - i, 11 + i, 'R')
-        sr(g, 12, 19, 17, 19, 'R')
-        rect(g, 8, 16, 27, 16, 'R')
+            spx(g, 11 + i, 14 + i, 'K')
+            spx(g, 13 - i, 14 + i, 'K')
+        sr(g, 14, 22, 17, 22, 'm')
+        rect(g, 8, 18, 27, 18, 'R')
     return g
 
 
@@ -462,6 +591,7 @@ MARS_EXPRESSIONS = ("neutral", "glitch", "surprised", "win", "sad", "angry", "sh
 MINISTER_EXPRESSIONS = ("calm", "angry")
 GIRL_EXPRESSIONS = ("neutral", "happy", "wink", "surprised")
 QUIETE_EXPRESSIONS = ("smile", "error")
+GRAFICO_EXPRESSIONS = ("neutral", "happy", "wink", "surprised")
 
 
 def sprite_rects(expr):
@@ -481,6 +611,7 @@ if __name__ == "__main__":
     data.update({"ministro-" + e: minister_rects(e) for e in MINISTER_EXPRESSIONS})
     data.update({"quiete-" + e: [[x, y, w, h, c] for (x, y, w, h, c) in rects(outline(build_quiete(e)))] for e in QUIETE_EXPRESSIONS})
     data.update({"girl-" + e: [[x, y, w, h, c] for (x, y, w, h, c) in rects(outline(build_girl(e)))] for e in GIRL_EXPRESSIONS})
+    data.update({"grafico-" + e: [[x, y, w, h, c] for (x, y, w, h, c) in rects(outline(build_grafico(e)))] for e in GRAFICO_EXPRESSIONS})
     lines = [
         "// GENERATED by tools/make_sprites.py (npm run sprites). Do not edit by hand.",
         "// Each sprite is a list of [x, y, width, height, paletteKey] pixel rects on a %dx%d grid." % (W, H),

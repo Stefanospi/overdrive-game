@@ -12,8 +12,8 @@ import { StoryScene } from '../storyScenes.js';
 //   { id: <chapter key>, next: { scene, data } }   where `next` runs when it ends.
 const BOX_H = 150; // dialogue box height
 // Typing sound per speaker: [pitch Hz, waveform]. Anyone else (decree, narration) gets a typewriter click.
-const VOICES = { mars: [330, 'square'], ministro: [110, 'sawtooth'], girl: [560, 'triangle'], quiete: [920, 'square'] };
-const STAGE_COLORS = { mars: COLORS.red, ministro: COLORS.silver, decree: COLORS.paper, girl: COLORS.red, quiete: COLORS.silver };
+const VOICES = { mars: [330, 'square'], ministro: [110, 'sawtooth'], girl: [560, 'triangle'], grafico: [440, 'triangle'], quiete: [920, 'square'] };
+const STAGE_COLORS = { mars: COLORS.red, ministro: COLORS.silver, decree: COLORS.paper, girl: COLORS.red, grafico: COLORS.red, quiete: COLORS.silver };
 
 export class Story extends Phaser.Scene {
   constructor() {
