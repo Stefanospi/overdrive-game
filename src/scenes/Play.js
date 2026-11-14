@@ -151,6 +151,7 @@ export class Play extends Phaser.Scene {
     this.shieldUntil = 0;
     this.forgeUntil = 0;
     this.forgeDone = false;
+    this.autoRewindDone = false;
     this.badge = null;
     this.giftDone = false;
     track('level_start', { level: L.id });
@@ -1026,6 +1027,12 @@ export class Play extends Phaser.Scene {
     if (!this.giftDone && L.giftBeat !== undefined && sb >= L.giftBeat && !this.badge && !this.over) {
       this.giftDone = true;
       this.spawnBadge('gift');
+    }
+    // boss, phase 3: the miss counter resets by itself (the audio is not rewound)
+    if (!this.autoRewindDone && L.autoRewindBeat !== undefined && sb >= L.autoRewindBeat && !this.over) {
+      this.autoRewindDone = true;
+      this.missRun = 0;
+      this.flashWord(TEXTS.helper.rewind, 900);
     }
     if (!this.forgeDone && L.forgeBeat !== undefined && sb >= L.forgeBeat && !this.badge && !this.over) {
       this.forgeDone = true;

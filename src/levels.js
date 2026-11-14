@@ -13,6 +13,8 @@ import brazilianTiming from './charts/brazilian-dub.js';
 import brazilianClip from './music/brazilian-dub.clip.mp3';
 import acidTiming from './charts/acid.js';
 import acidClip from './music/acid.clip.mp3';
+import topOneTiming from './charts/top-one.js';
+import topOneClip from './music/top-one.clip.mp3';
 
 const EM = [164.81, 196.0, 246.94];
 const C = [130.81, 164.81, 196.0];
@@ -84,7 +86,45 @@ const ACID_PATTERNS = {
   z: ['x...............', 'x...............', 'x...............'],
 };
 
+// TOP ONE: the boss fight of chapter 3 (SERVER, QUIETE.SYS and the Minister). Speed house /
+// UK groove, 147 BPM; the clip starts on the first drop (1:25 of the master) and runs 22
+// bars, numbered from 1 here.
+//   phase 1 CENSURA  bars 1-6    QUIETE.SYS, lanes censored, Adriana's shield (giftBeat)
+//   phase 2 DECRETO  bars 7-12   the Minister, decrees; Gabriel's ID FALSA x2 on bars 9-12 (forgeBeat)
+//   phase 3 ROOT     bars 13-19  Minister+Quiete fused, all lanes, root at 100%; REWIND fires on its own
+//   outro            bars 20-22  cut and rise, few notes; victory on the last bar
+// TODO: the note map. The author writes it: no notes on the kick in any lane, put them on
+// the off-beat bass. Until then every bar is empty.
+// TODO (mechanics not in the engine yet): censored lanes (black bars), decrees as special
+// notes, forced root at 100% in phase 3, the payload screen after the ending.
+const TOPONE_PATTERNS = {
+  e: ['................', '................', '................'], // TODO: replace with the real patterns
+};
+
 export const LEVELS = {
+  server: {
+    id: 'server',
+    n: 3,
+    title: 'TOP ONE',
+    boss: true,
+    bpm: topOneTiming.bpm,
+    lanes: 3,
+    approach: 3,
+    synth: false,
+    giftBeat: 12, // phase 1: Adriana's BONUS ROOT + shield (bar 4)
+    forgeBeat: 32, // phase 2: Gabriel's ID FALSA, 16 beats = bars 9-12
+    autoRewindBeat: 48, // phase 3 (bar 13): the miss counter resets, the audio does not rewind
+    track: {
+      url: topOneClip,
+      lead: topOneTiming.lead,
+      length: topOneTiming.length,
+      fadeIn: 0,
+      fadeOut: 0.3,
+    },
+    patterns: TOPONE_PATTERNS,
+    bars: Array.from({ length: 22 }, () => ['drop', 'e']),
+  },
+
   acid: {
     id: 'acid',
     n: 2,
