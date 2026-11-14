@@ -3,9 +3,12 @@ import { K, W, H, LH, px, COLORS, FONT_PS, FONT_VT } from '../config.js';
 import { LEVELS, FIRST_LEVEL } from '../levels.js';
 import { accuracy, rank } from '../rank.js';
 import { registerMars } from '../sprites.js';
-import { drawBackdrop, drawLabelStrip, Bubble, blinkText } from '../ui.js';
+import { drawBackdrop, drawLabelStrip, button } from '../ui.js';
+import { EP, openLink } from '../campaign.js';
+import { recordResult, fragments, TOTAL_FRAGMENTS } from '../progress.js';
+import { shareResult } from '../share.js';
 import { attachFx } from '../fx.js';
-import { TEXTS, pick } from '../texts.js';
+import { TEXTS } from '../texts.js';
 
 // Result screen: an official report from the Ministero del Basso, stamped.
 export class End extends Phaser.Scene {
@@ -44,7 +47,7 @@ export class End extends Phaser.Scene {
     // On short screens the whole slip shrinks to leave room for MARS below it.
     const cw = px(318);
     const ch = px(418);
-    const fit = Math.min(1, (LH - 250) / 440);
+    const fit = Math.min(1, (LH - 310) / 440);
     const cardY = px(44 + 209 * fit);
     const card = this.add.container(W / 2, cardY).setDepth(5).setScale(fit);
     const g = this.add.graphics();
@@ -120,25 +123,61 @@ export class End extends Phaser.Scene {
 
     // ---- MARS.EXE and what comes next ----
     this.add
-      .image(px(12), H - px(28), 'mars-' + expr)
+      .image(px(10), px(LH - 26), 'mars-' + expr)
       .setOrigin(0, 1)
-      .setScale(K * 3)
+      .setScale(K * 2)
       .setDepth(6);
-    const bx = px(12) + 36 * K * 3 + px(20);
-    const bubble = new Bubble(this, bx, H - px(116), W - bx - px(14));
-    this.time.delayedCall(1000, () => bubble.show(pick(TEXTS.ranks[tier]), 0));
+    const x0 = px(98);
+    const cw2 = W - x0 - px(12);
+    const cx = x0 + cw2 / 2;
 
-    this.add.text(bx, H - px(98), TEXTS.ui.soon, ps(10, '#ff2a2a')).setDepth(6);
-    this.add.text(bx, H - px(80), TEXTS.ui.soonSub, vt(20, '#e9e4dc')).setDepth(6);
+    // the EP packets: one per finished track
+    const prog = this.result.auto ? { tier, gotFragment: false, count: fragments().length, isBest: false } : recordResult(this.result);
+    const fy = px(LH - 238);
+    this.add
+      .text(x0, fy, tier === 'low' ? TEXTS.campaign.fragmentBad : TEXTS.campaign.fragmentOk, ps(7, tier === 'low' ? '#b8121a' : '#ff2a2a'))
+      .setDepth(6);
+    const fg = this.add.graphics().setDepth(6);
+    for (let i = 0; i < TOTAL_FRAGMENTS; i++) {
+      const bx = x0 + i * px(22);
+      fg.lineStyle(px(2), COLORS.silver, 1).strokeRect(bx, fy + px(14), px(18), px(14));
+      if (i < prog.count) fg.fillStyle(COLORS.red, 1).fillRect(bx + px(2), fy + px(16), px(14), px(10));
+    }
+    this.add
+      .text(x0 + TOTAL_FRAGMENTS * px(22) + px(6), fy + px(13), `${prog.count}/${TOTAL_FRAGMENTS}`, vt(18, '#c0c0c0'))
+      .setDepth(6);
+    this.add
+      .text(x0, fy + px(36), `USCITA ${EP.dateLabel}${EP.indicative ? ' (' + TEXTS.campaign.indicative + ')' : ''}`, vt(16, '#e9e4dc'))
+      .setDepth(6);
+    this.add
+      .text(x0, fy + px(52), `${TEXTS.campaign.prize} ${EP.prize.top}: ${EP.prize.text}`, vt(17, '#ff7a7a'))
+      .setDepth(6);
 
-    const again = blinkText(this, bx + (W - bx - px(14)) / 2, H - px(42), TEXTS.ui.again, 7).setVisible(false);
-    this.time.delayedCall(1200, () => {
-      again.setVisible(true);
-      this.input.once('pointerdown', () => {
-        this.cameras.main.fadeOut(250);
-        this.time.delayedCall(260, () => this.scene.start('Play', { level }));
-      });
-    });
+    const bw = (cw2 - px(10)) / 2;
+    const bh = px(30);
+    const hasLink = !!(EP.links.listen || EP.links.presave);
+    button(
+      this,
+      cx,
+      px(LH - 150),
+      cw2,
+      bh,
+      EP.links.listen ? TEXTS.ui.listen : EP.links.presave ? TEXTS.ui.presave : TEXTS.ui.linkSoon,
+      () => openLink(EP.links.listen || EP.links.presave, EP.links.listen ? 'listen' : 'presave'),
+      { primary: true, size: 8, depth: 6, disabled: !hasLink },
+    );
+    const go = (scene, data) => {
+      this.cameras.main.fadeOut(250);
+      this.time.delayedCall(260, () => this.scene.start(scene, data));
+    };
+    const shareBtn = button(this, x0 + bw / 2, px(LH - 112), bw, bh, TEXTS.ui.share, async () => {
+      shareBtn.label.setText('...');
+      await shareResult(this.result);
+      shareBtn.label.setText(TEXTS.ui.share);
+    }, { size: 8, depth: 6 });
+    button(this, x0 + bw * 1.5 + px(10), px(LH - 112), bw, bh, TEXTS.ui.board, () => go('Board', { from: 'End', result: this.result }), { size: 8, depth: 6 });
+    button(this, x0 + bw / 2, px(LH - 74), bw, bh, TEXTS.ui.map, () => go('Hub'), { size: 8, depth: 6 });
+    button(this, x0 + bw * 1.5 + px(10), px(LH - 74), bw, bh, TEXTS.ui.again, () => go('Play', { level }), { primary: true, size: 8, depth: 6 });
   }
 
   update(time, delta) {

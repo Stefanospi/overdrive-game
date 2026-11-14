@@ -186,3 +186,29 @@ export function blinkText(scene, x, y, str, size = 10) {
   scene.tweens.add({ targets: t, alpha: 0.2, duration: 520, yoyo: true, repeat: -1 });
   return t;
 }
+
+// Chunky tap button, centred on (x, y). Primary = red, otherwise paper.
+// The press is handled on pointerdown so it feels instant on a phone.
+export function button(scene, x, y, w, h, label, onTap, { primary = false, size = 8, depth = 30, disabled = false } = {}) {
+  const c = scene.add.container(x, y).setDepth(depth);
+  const g = scene.add.graphics();
+  const fill = disabled ? COLORS.grey : primary ? COLORS.red : COLORS.paper;
+  g.fillStyle(0x000000, 1).fillRect(-w / 2 + px(4), -h / 2 + px(4), w, h);
+  g.fillStyle(fill, 1).fillRect(-w / 2, -h / 2, w, h);
+  g.lineStyle(px(2), 0x000000, 1).strokeRect(-w / 2, -h / 2, w, h);
+  const t = scene.add
+    .text(0, px(1), label, { fontFamily: FONT_PS, fontSize: px(size) + 'px', color: primary ? '#ffffff' : '#15121a' })
+    .setOrigin(0.5);
+  c.add([g, t]);
+  c.setSize(w, h);
+  if (!disabled) {
+    c.setInteractive({ useHandCursor: true });
+    c.on('pointerdown', (p, lx, ly, ev) => {
+      if (ev && ev.stopPropagation) ev.stopPropagation();
+      scene.tweens.add({ targets: c, scale: 0.94, duration: 60, yoyo: true });
+      onTap();
+    });
+  }
+  c.label = t;
+  return c;
+}

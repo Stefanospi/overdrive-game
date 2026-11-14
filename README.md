@@ -1,7 +1,7 @@
 # OVERDRIVE.EXE
 
 Gioco web mobile (verticale) per promuovere l'EP **Overdrive** di Stephen Mars.
-Un rhythm game a corsie, un livello per traccia. Il Ministro ha vietato il basso, il ballo e le riunioni; Mars trasmette da una radio pirata, nascosto nel sistema del Ministero sotto le spoglie dell'antivirus **MARS.EXE**, e riaccende un quartiere per ogni traccia.
+Un rhythm game a corsie, un livello per traccia. Il Ministro ha vietato il basso, il ballo e le riunioni; Mars, hacker esterno che non sopporta l'ingiustizia, si dichiara un **virus** (trojan con backdoor) e scardina il sistema del Ministero strato per strato, riaccendendo un quartiere per ogni traccia. Easter egg: la sua ragazza compare in boot, nei popup e nel finale buono. Il nome sta in `EGG.name` in `src/texts.js`.
 
 Stack: [Phaser 3](https://phaser.io) + [Vite](https://vitejs.dev), JavaScript puro. Sprite e sfondi sono generati da codice; l'unico asset è la clip audio di ogni livello.
 
@@ -33,7 +33,7 @@ Le note escono dal soundsystem e scendono lungo tre corsie. Tocca la corsia quan
 | fino a 150 ms | OK | 100 | +0,6 |
 | oltre | MANCATO | 0 | -5 |
 
-La combo alza il moltiplicatore (x2 a 10, x3 a 20, x4 a 30). Sopra il 60% di Overdrive ("limite legale") MARS.EXE comincia a glitchare. Al 100% parte la **modalità Overdrive**: 16 battiti a colori invertiti e punti doppi, poi la barra torna al 55%.
+La combo alza il moltiplicatore (x2 a 10, x3 a 20, x4 a 30). La barra è l'**infezione**. Sopra il 60% ("soglia di rilevamento") MARS.EXE comincia a glitchare. Al 100% parte l'**accesso root** (modalità Overdrive): 16 battiti a colori invertiti e punti doppi, poi la barra torna al 55%.
 
 I valori sono in cima a `src/scenes/Play.js` (`GRADES`, `MISS_OD`, `OD_MODE_BEATS`).
 

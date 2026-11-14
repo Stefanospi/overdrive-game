@@ -9,6 +9,9 @@ PAL = {
     'm': '#7a3b34',
     # the Minister
     'A': '#8d919b', 'a': '#5f636d', 'N': '#d9d2c5', 'n': '#b0a898', 'X': '#000000',
+    # the helper (Easter egg): long dark hair, green eyes, grey oversized hoodie, ripped denim shorts
+    'L': '#34241e', 'l': '#563b2f', 'E': '#8aa07a', 'Y': '#7d828e', 'y': '#5a5f6b',
+    'D': '#b4c6d6', 'd': '#7f95ab', 'Z': '#b8736c',
 }
 
 
@@ -263,6 +266,119 @@ def build_minister(expr):
     return g
 
 
+def build_girl(expr):
+    """The helper (Easter egg): sporty outfit, long dark hair, green eyes, silver bracelets,
+    a pomegranate tattoo (red) on the right forearm."""
+    g = new()
+    # hair behind the head and shoulders
+    disc(g, 17.5, 13, 9.5, 11, 'L')
+    sr(g, 7, 10, 10, 26, 'L')
+    # chunky white sneakers, socks, legs
+    sr(g, 8, 55, 16, 57, 'W')
+    sr(g, 8, 57, 16, 57, 'G')
+    sr(g, 9, 55, 11, 55, 'w')
+    sr(g, 13, 56, 15, 56, 'w')
+    sr(g, 11, 54, 15, 54, 'W')
+    sr(g, 11, 52, 15, 53, 'S')
+    # ripped denim shorts
+    sr(g, 9, 44, 17, 51, 'D')
+    sr(g, 17, 45, 17, 51, 'd')
+    sr(g, 9, 51, 16, 51, 'd')
+    rect(g, 12, 48, 13, 49, 'S')
+    px(g, 12, 50, 'W')
+    px(g, 14, 48, 'W')
+    # oversized grey hoodie
+    sr(g, 7, 27, 17, 27, 'Y')
+    sr(g, 5, 28, 17, 43, 'Y')
+    sr(g, 2, 29, 5, 40, 'Y')
+    sr(g, 2, 41, 5, 43, 'y')
+    sr(g, 5, 42, 17, 43, 'y')
+    sr(g, 9, 36, 9, 40, 'y')
+    sr(g, 9, 40, 17, 40, 'y')
+    sr(g, 12, 27, 17, 28, 'y')
+    sr(g, 15, 29, 15, 34, 'W')
+    sr(g, 15, 35, 15, 35, 'w')
+    # hands and silver bracelets; right sleeve pushed up to show the tattoo
+    sr(g, 3, 44, 5, 46, 'S')
+    sr(g, 3, 44, 5, 44, 'e')
+    rect(g, 30, 38, 33, 43, 'S')
+    rect(g, 30, 36, 33, 37, 'y')
+    rect(g, 31, 40, 32, 42, 'R')
+    px(g, 32, 41, 'K')
+    # neck and head
+    sr(g, 15, 23, 17, 26, 's')
+    disc(g, 17.5, 16, 6.7, 8.3, 'S')
+    # fringe, face-framing locks, highlights
+    rect(g, 10, 8, 25, 10, 'L')
+    sr(g, 10, 11, 11, 21, 'L')
+    sr(g, 12, 11, 12, 12, 'L')
+    for (x, y) in ((14, 9), (15, 8), (21, 9), (12, 9)):
+        px(g, x, y, 'l')
+    # eyes: heavy brows, green iris
+    brow_y = 10 if expr == 'surprised' else 11
+    sr(g, 12, brow_y, 15, brow_y, 'K')
+    sr(g, 11, brow_y + 1, 11, brow_y + 1, 'K')
+    sr(g, 12, 14, 15, 15, 'W')
+    sr(g, 13, 14, 14, 15, 'E')
+    sr(g, 13, 15, 14, 15, 'K')
+    sr(g, 12, 13, 15, 13, 'K')  # lid line: slightly bored
+    if expr == 'wink':
+        rect(g, 12, 14, 15, 15, 'S')
+        rect(g, 12, 15, 15, 15, 'K')
+    if expr == 'surprised':
+        sr(g, 12, 13, 15, 13, 'S')
+        sr(g, 12, 12, 15, 12, 'K')
+    # nose and mouth
+    sr(g, 17, 17, 17, 18, 's')
+    if expr in ('happy', 'wink'):
+        sr(g, 15, 21, 17, 21, 'W')
+        sr(g, 15, 22, 17, 22, 'Z')
+        sr(g, 14, 20, 14, 20, 'Z')
+    elif expr == 'surprised':
+        sr(g, 16, 21, 17, 22, 'K')
+    else:
+        sr(g, 16, 21, 17, 21, 'Z')
+    # long hair in front of the shoulders
+    sr(g, 8, 24, 11, 38, 'L')
+    sr(g, 9, 36, 10, 41, 'L')
+    sr(g, 8, 28, 8, 31, 'l')
+    return g
+
+
+def build_quiete(expr):
+    """The Ministry's servile assistant (QUIETE.SYS): a smiling beige CRT on a tiny grey body."""
+    g = new()
+    sr(g, 10, 44, 17, 52, 'P')
+    sr(g, 8, 53, 16, 55, 'B')
+    sr(g, 9, 53, 11, 53, 'b')
+    sr(g, 8, 30, 17, 43, 'A')
+    sr(g, 4, 31, 7, 44, 'A')
+    sr(g, 4, 45, 6, 47, 'W')
+    sr(g, 17, 31, 17, 41, 'R')
+    sr(g, 15, 29, 17, 30, 'W')
+    sr(g, 15, 27, 17, 28, 'a')
+    # monitor head
+    sr(g, 5, 4, 17, 26, 'N')
+    sr(g, 5, 24, 17, 26, 'n')
+    sr(g, 8, 7, 17, 22, 'K')
+    # paperclip antenna
+    sr(g, 15, 1, 15, 3, 'w')
+    sr(g, 16, 0, 17, 0, 'w')
+    if expr == 'smile':
+        sr(g, 11, 11, 13, 14, 'W')
+        sr(g, 12, 12, 13, 14, 'R')
+        sr(g, 11, 19, 17, 19, 'W')
+        sr(g, 10, 18, 10, 18, 'W')
+    else:
+        # error: crossed eyes, flat mouth
+        for i in range(3):
+            spx(g, 11 + i, 11 + i, 'R')
+            spx(g, 13 - i, 11 + i, 'R')
+        sr(g, 12, 19, 17, 19, 'R')
+        rect(g, 8, 16, 27, 16, 'R')
+    return g
+
+
 def outline(g):
     out = [r[:] for r in g]
     for y in range(H):
@@ -339,6 +455,8 @@ import os
 
 MARS_EXPRESSIONS = ("neutral", "glitch", "surprised", "win", "sad", "angry", "shout")
 MINISTER_EXPRESSIONS = ("calm", "angry")
+GIRL_EXPRESSIONS = ("neutral", "happy", "wink", "surprised")
+QUIETE_EXPRESSIONS = ("smile", "error")
 
 
 def sprite_rects(expr):
@@ -356,6 +474,8 @@ if __name__ == "__main__":
     out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "src", "sprites.js")
     data = {"mars-" + e: sprite_rects(e) for e in MARS_EXPRESSIONS}
     data.update({"ministro-" + e: minister_rects(e) for e in MINISTER_EXPRESSIONS})
+    data.update({"quiete-" + e: [[x, y, w, h, c] for (x, y, w, h, c) in rects(outline(build_quiete(e)))] for e in QUIETE_EXPRESSIONS})
+    data.update({"girl-" + e: [[x, y, w, h, c] for (x, y, w, h, c) in rects(outline(build_girl(e)))] for e in GIRL_EXPRESSIONS})
     lines = [
         "// GENERATED by tools/make_sprites.py (npm run sprites). Do not edit by hand.",
         "// Each sprite is a list of [x, y, width, height, paletteKey] pixel rects on a %dx%d grid." % (W, H),

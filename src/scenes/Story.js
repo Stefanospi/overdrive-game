@@ -10,7 +10,7 @@ import { getCtx, preload } from '../audio.js';
 // Cutscene: one chapter of TEXTS.story, a panel per tap. Started with
 //   { id: <chapter key>, next: { scene, data } }   where `next` runs when it ends.
 const BOX_H = 150; // dialogue box height
-const STAGE_COLORS = { mars: COLORS.red, ministro: COLORS.silver, decree: COLORS.paper };
+const STAGE_COLORS = { mars: COLORS.red, ministro: COLORS.silver, decree: COLORS.paper, girl: COLORS.red, quiete: COLORS.silver };
 
 export class Story extends Phaser.Scene {
   constructor() {
@@ -193,7 +193,7 @@ export class Story extends Phaser.Scene {
 
   update(time, delta) {
     this.glitch = Math.max(0, this.glitch - delta / 400);
-    this.spin += delta * (this.who === 'ministro' ? 0 : 0.00012);
+    this.spin += delta * (this.who === 'ministro' || this.who === 'quiete' ? 0 : 0.00012);
     if (this.fx) {
       this.fx.glitch = this.glitch;
       this.fx.ab = 0.3 + this.glitch * 1.4;
@@ -208,7 +208,7 @@ export class Story extends Phaser.Scene {
     const cx = W / 2;
     const cy = this.stageY - px(150);
     const color = STAGE_COLORS[this.who] || COLORS.red;
-    if (this.who === 'ministro') {
+    if (this.who === 'ministro' || this.who === 'quiete') {
       g.fillStyle(color, 0.1);
       for (let x = px(20); x < W; x += px(44)) g.fillRect(x, px(90), px(18), this.stageY - px(90));
     } else {

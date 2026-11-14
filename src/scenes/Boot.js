@@ -2,9 +2,11 @@ import Phaser from 'phaser';
 import { K, W, LH, px, COLORS, FONT_PS, FONT_VT } from '../config.js';
 import { LEVELS, FIRST_LEVEL } from '../levels.js';
 import { registerMars } from '../sprites.js';
-import { drawBackdrop, drawLabelStrip, textTexture, Bubble, blinkText } from '../ui.js';
+import { drawBackdrop, drawLabelStrip, textTexture, buildWindow, button } from '../ui.js';
+import { settings, reducedFx } from '../settings.js';
+import { EP, track } from '../campaign.js';
 import { attachFx } from '../fx.js';
-import { TEXTS, pick } from '../texts.js';
+import { TEXTS } from '../texts.js';
 import { getCtx, preload } from '../audio.js';
 
 // Title screen: a BIOS boot log, then the title slams in and MARS.EXE shows up.
@@ -63,26 +65,80 @@ export class Boot extends Phaser.Scene {
       .setOrigin(0.5)
       .setVisible(false);
 
-    // MARS stands between the speech box and the call to action, as big as fits
-    const feet = LH - 132;
-    const marsScale = Phaser.Math.Clamp(Math.floor((feet - 392) / 58), 2, 6);
-    const mars = this.add
-      .image(W / 2, px(feet), 'mars-neutral')
-      .setOrigin(0.5, 1)
-      .setScale(K * marsScale)
-      .setDepth(4)
-      .setVisible(false);
-    const bubble = new Bubble(this, px(36), px(300), W - px(72), { tail: false, anchor: 'top', size: 24 });
-    const cta = blinkText(this, W / 2, px(LH - 92), TEXTS.ui.start, 10).setVisible(false);
-    const cuffie = this.add
-      .text(W / 2, px(LH - 58), TEXTS.ui.headphones, { fontFamily: FONT_VT, fontSize: px(20) + 'px', color: '#b8bcc6' })
+    // release line under the subtitle
+    const rel = this.add
+      .text(W / 2, px(292), `USCITA ${EP.dateLabel}${EP.indicative ? ' (' + TEXTS.campaign.indicative + ')' : ''}`, {
+        fontFamily: FONT_VT,
+        fontSize: px(19) + 'px',
+        color: '#ff7a7a',
+      })
       .setOrigin(0.5)
-      .setDepth(30)
       .setVisible(false);
+
+    // ---- the fake mandatory update: installing it is "starting the game" ----
+    const I = TEXTS.installer;
+    const ww = px(330);
+    const wh = px(170);
+    const wx = (W - ww) / 2;
+    const wy = px(322);
+    const win = buildWindow(this, ww, wh, I.title, { font: 6 });
+    win.setPosition(wx, wy).setDepth(4).setVisible(false);
+    const head = this.add.text(px(14), px(36), I.head, { fontFamily: FONT_PS, fontSize: px(9) + 'px', color: '#15121a' });
+    const body = this.add.text(px(14), px(54), I.body, {
+      fontFamily: FONT_VT,
+      fontSize: px(20) + 'px',
+      color: '#15121a',
+      wordWrap: { width: ww - px(28) },
+      lineSpacing: -px(4),
+    });
+    const barG = this.add.graphics();
+    const drawBar = (v) => {
+      barG.clear();
+      barG.fillStyle(0xffffff, 1).fillRect(px(14), px(98), ww - px(28), px(14));
+      barG.lineStyle(px(2), 0x000000, 1).strokeRect(px(14), px(98), ww - px(28), px(14));
+      barG.fillStyle(COLORS.red, 1).fillRect(px(16), px(100), (ww - px(32)) * v, px(10));
+    };
+    drawBar(0);
+    win.add([head, body, barG]);
+    const installBtn = button(this, W / 2, wy + px(142), px(150), px(32), I.button, () => install(), { primary: true, size: 11, depth: 6 });
+    installBtn.setVisible(false);
+    const tagline = this.add
+      .text(W / 2, px(LH - 84), I.tagline, { fontFamily: FONT_VT, fontSize: px(22) + 'px', color: '#e9e4dc' })
+      .setOrigin(0.5)
+      .setVisible(false);
+
+    // small links: calibration, leaderboard, effects
+    const link = (x, label, fn) => {
+      const t = this.add
+        .text(x, px(LH - 46), label, { fontFamily: FONT_VT, fontSize: px(19) + 'px', color: '#b8bcc6' })
+        .setOrigin(0.5)
+        .setDepth(30)
+        .setVisible(false)
+        .setInteractive({ useHandCursor: true });
+      t.on('pointerdown', (p, lx, ly, ev) => {
+        if (ev && ev.stopPropagation) ev.stopPropagation();
+        getCtx();
+        fn();
+      });
+      return t;
+    };
+    const go = (scene, data) => {
+      this.cameras.main.fadeOut(200);
+      this.time.delayedCall(210, () => this.scene.start(scene, data));
+    };
+    const fxLabel = () => (reducedFx() ? TEXTS.ui.fxReduced : TEXTS.ui.fxFull);
+    const links = [
+      link(px(62), TEXTS.ui.calibrate, () => go('Calibrate')),
+      link(W / 2, TEXTS.ui.board, () => go('Board', { from: 'Boot' })),
+      link(W - px(76), fxLabel(), () => {
+        settings.set('reduced', !reducedFx());
+        links[2].setText(fxLabel());
+      }),
+    ];
 
     const reveal = 140 + log.length * 170 + 120;
     this.time.delayedCall(reveal, () => {
-      [...parts, exe, sub].forEach((o) => o.setVisible(true));
+      [...parts, exe, sub, rel].forEach((o) => o.setVisible(true));
       parts.forEach((p) => {
         p.setScale(1.7);
         this.tweens.add({ targets: p, scale: 1, duration: 140, ease: 'Back.Out' });
@@ -91,34 +147,47 @@ export class Boot extends Phaser.Scene {
       this.cameras.main.shake(200, 0.01);
     });
     this.time.delayedCall(reveal + 350, () => {
-      mars.setVisible(true);
-      bubble.show(pick(TEXTS.boot), 0);
-      cta.setVisible(true);
-      cuffie.setVisible(true);
-    });
-    // MARS blinks into his glitched self now and then
-    this.time.addEvent({
-      delay: 2600,
-      loop: true,
-      callback: () => {
-        if (!mars.visible) return;
-        mars.setTexture('mars-glitch');
-        this.glitch = 0.6;
-        this.time.delayedCall(120, () => mars.setTexture('mars-neutral'));
-      },
+      win.setVisible(true);
+      installBtn.setVisible(true);
+      tagline.setVisible(true);
+      links.forEach((l) => l.setVisible(true));
     });
 
+    // installing fails on purpose: the file is not an update, it is MARS
     let started = false;
-    this.input.on('pointerdown', () => {
+    const install = () => {
       if (started) return;
       started = true;
       getCtx(); // audio can only start after a user gesture
-      this.glitch = 1;
-      this.cameras.main.fadeOut(250);
-      this.time.delayedCall(260, () =>
-        this.scene.start('Story', { id: 'intro', next: { scene: 'Play', data: { level: FIRST_LEVEL } } }),
-      );
-    });
+      track('install_click');
+      installBtn.setVisible(false);
+      body.setText(I.progress);
+      const p = { v: 0 };
+      this.tweens.add({
+        targets: p,
+        v: 0.99,
+        duration: 1100,
+        ease: 'Quad.In',
+        onUpdate: () => drawBar(p.v),
+        onComplete: () => {
+          this.glitch = 1;
+          this.cameras.main.shake(300, 0.012);
+          body.setText(I.error).setColor('#b8121a');
+          const mars = this.add
+            .image(W / 2, wy + wh + px(6), 'mars-glitch')
+            .setOrigin(0.5, 1)
+            .setScale(K * 2.2)
+            .setDepth(7);
+          this.tweens.add({ targets: mars, y: wy + wh - px(10), duration: 180, ease: 'Back.Out' });
+          this.time.delayedCall(1300, () => {
+            this.cameras.main.fadeOut(250);
+            this.time.delayedCall(260, () =>
+              this.scene.start('Story', { id: 'intro', next: { scene: 'Play', data: { level: FIRST_LEVEL } } }),
+            );
+          });
+        },
+      });
+    };
   }
 
   update(time, delta) {

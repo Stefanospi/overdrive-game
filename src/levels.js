@@ -182,3 +182,14 @@ export function buildChart(level) {
   cues.sort((a, b) => a.b - b.b);
   return { notes, cues, end: level.bars.length * 4 + (synth ? 3 : 1.5) };
 }
+
+// The five layers of the Ministry's system, one per track of the EP. `id: null`
+// means the track is not out yet: the map shows it as locked. Fill in `id` when a
+// level is added to LEVELS above.
+export const ROADMAP = [
+  { layer: 'FIREWALL', id: 'brazilian' },
+  { layer: 'PROXY', id: null },
+  { layer: 'ANAGRAFE', id: null },
+  { layer: 'KERNEL', id: null },
+  { layer: 'SERVER', id: null },
+];

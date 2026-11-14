@@ -5,10 +5,15 @@ import { Boot } from './scenes/Boot.js';
 import { Play } from './scenes/Play.js';
 import { End } from './scenes/End.js';
 import { Story } from './scenes/Story.js';
+import { Hub } from './scenes/Hub.js';
+import { Board } from './scenes/Board.js';
+import { Calibrate } from './scenes/Calibrate.js';
+import { initAnalytics } from './campaign.js';
 
 // The first scene in the list starts automatically; ?scene= picks another (debug).
-const first = { play: Play, end: End, story: Story }[PARAMS.get('scene')] || Boot;
-const scenes = [first, ...[Boot, Story, Play, End].filter((s) => s !== first)];
+const first = { play: Play, end: End, story: Story, hub: Hub, board: Board, calibrate: Calibrate }[PARAMS.get('scene')] || Boot;
+const scenes = [first, ...[Boot, Story, Play, End, Hub, Board, Calibrate].filter((s) => s !== first)];
+initAnalytics();
 
 const start = () => {
   const game = new Phaser.Game({

@@ -7,3 +7,6 @@ __pycache__/
 # Full, unreleased tracks stay local. Only the clips cut by tools/analyze_track.py are published.
 src/music/*
 !src/music/*.clip.mp3
+src/img/img1.jpeg
+.gitignore
+src/img/img2.jpeg
