@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { K, W, H, LH, px, COLORS, FONT_PS, FONT_VT } from '../config.js';
-import { LEVELS, FIRST_LEVEL } from '../levels.js';
+import { LEVELS, FIRST_LEVEL, ROADMAP } from '../levels.js';
 import { accuracy, rank } from '../rank.js';
 import { registerMars } from '../sprites.js';
 import { drawBackdrop, drawLabelStrip, button } from '../ui.js';
@@ -176,8 +176,25 @@ export class End extends Phaser.Scene {
       shareBtn.label.setText(TEXTS.ui.share);
     }, { size: 8, depth: 6 });
     button(this, x0 + bw * 1.5 + px(10), px(LH - 112), bw, bh, TEXTS.ui.board, () => go('Board', { from: 'End', result: this.result }), { size: 8, depth: 6 });
-    button(this, x0 + bw / 2, px(LH - 74), bw, bh, TEXTS.ui.map, () => go('Hub'), { size: 8, depth: 6 });
-    button(this, x0 + bw * 1.5 + px(10), px(LH - 74), bw, bh, TEXTS.ui.again, () => go('Play', { level }), { primary: true, size: 8, depth: 6 });
+    // the next layer of the map, if there is one: its intro chapter plays first
+    const at = ROADMAP.findIndex((n) => n.id === level);
+    const nextId = at >= 0 && ROADMAP[at + 1] ? ROADMAP[at + 1].id : null;
+    const goNext = () => {
+      const intro = nextId + '_intro';
+      if (TEXTS.story[intro]) go('Story', { id: intro, next: { scene: 'Play', data: { level: nextId } } });
+      else go('Play', { level: nextId });
+    };
+    const rowY = px(LH - 74);
+    if (nextId) {
+      const tw = (cw2 - px(12)) / 3;
+      const tx = (i) => x0 + tw / 2 + i * (tw + px(6));
+      button(this, tx(0), rowY, tw, bh, TEXTS.ui.map, () => go('Hub'), { size: 8, depth: 6 });
+      button(this, tx(1), rowY, tw, bh, TEXTS.ui.again, () => go('Play', { level }), { size: 8, depth: 6 });
+      button(this, tx(2), rowY, tw, bh, TEXTS.ui.next, goNext, { primary: true, size: 8, depth: 6 });
+    } else {
+      button(this, x0 + bw / 2, rowY, bw, bh, TEXTS.ui.map, () => go('Hub'), { size: 8, depth: 6 });
+      button(this, x0 + bw * 1.5 + px(10), rowY, bw, bh, TEXTS.ui.again, () => go('Play', { level }), { primary: true, size: 8, depth: 6 });
+    }
   }
 
   update(time, delta) {

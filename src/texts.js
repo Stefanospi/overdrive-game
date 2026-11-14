@@ -58,6 +58,7 @@ export const TEXTS = {
     board: 'CLASSIFICA',
     map: 'MAPPA',
     again: 'RIGIOCA',
+    next: 'AVANTI >',
     back: 'INDIETRO',
     calibrate: 'CALIBRA',
     fxFull: 'EFFETTI: PIENI',
@@ -122,7 +123,7 @@ export const TEXTS = {
         { caption: 'OVERDRIVE CREW // CANALE PRIVATO // 2 MEMBRI', text: 'Il canale è chiuso. Parla solo la squadra.' },
         { who: 'mars', expr: 'neutral', text: 'Siamo in due. Per il Proxy serve di più.' },
         { who: 'girl', expr: 'wink', text: 'Conosco uno che falsifica qualsiasi documento.' },
-        { who: 'mars', expr: 'shout', text: 'Primo quartiere acceso. Ne restano quattro.' },
+        { who: 'mars', expr: 'shout', text: 'Primo quartiere acceso. Ne restano due.' },
       ],
     },
     brazilian_mid: {
@@ -170,7 +171,7 @@ export const TEXTS = {
         { who: 'ministro', expr: 'angry', text: 'Quell\'utente era registrato. Chi lo ha firmato?' },
         { who: 'grafico', expr: 'happy', text: 'Timbro autentico. Almeno questo, l\'ho fatto bene.' },
         { who: 'girl', expr: 'happy', text: 'Canale sicuro. Siamo tutti dentro.' },
-        { who: 'mars', expr: 'win', text: 'Secondo quartiere acceso. Ne restano tre.' },
+        { who: 'mars', expr: 'win', text: 'Secondo quartiere acceso. Resta il Server.' },
       ],
     },
     acid_mid: {
@@ -315,7 +316,7 @@ export const TEXTS = {
   // ---- map of the system -------------------------------------------------------
   hub: {
     title: 'MAPPA DEL SISTEMA',
-    layers: ['FIREWALL', 'PROXY', 'ANAGRAFE', 'KERNEL', 'SERVER'],
+    layers: ['FIREWALL', 'PROXY', 'SERVER'],
     locked: 'IN ARRIVO',
     hint: 'Ogni singolo accende un quartiere.',
   },

@@ -66,21 +66,21 @@ const BRAZILIAN_PATTERNS = {
 };
 
 // ACID (techno), 2:50 to 3:45 of the track: 6 playable bars of build-up, then 22 of
-// drop. Four on the floor: lane 0 is the kick, lane 1 the offbeat acid line (steps 2, 6,
-// 10, 14), lane 2 holds on the sub. The build thickens the kick and ends on a roll.
+// drop. Deliberately easy: lane 0 is the kick (mostly one per beat), lane 1 only answers on
+// the offbeats after beats 2 and 4, lane 2 is a single hold, and the lanes never stack.
 const ACID_PATTERNS = {
   //    lane 0 (kick)       lane 1 (offbeat acid)  lane 2 (sub holds)
-  b1: ['x...x...........', '......x.........', '................'],
-  b2: ['x...x...x.......', '......x.....x...', '................'],
-  b3: ['x...x...x...x...', '..x...x.........', '................'],
-  b4: ['x...x...x...x...', '..x...x...x...x.', '................'],
-  b5: ['x...x...x...x...', '..x...x...x.x.x.', '................'],
-  b6: ['x.x.x.x.x.x.x.x.', '................', '................'],
-  d1: ['x...x...x...x...', '................', 'h-------........'],
-  d2: ['x...x...x...x...', '..x...x...x...x.', '................'],
-  d3: ['x.......x.......', '..x...x...x...x.', 'h---....h---....'],
-  d4: ['x...x...x...x...', '..x.....x.....x.', '........h-------'],
-  f1: ['x...x...x.x.x.x.', '......x...x...x.', '................'],
+  b1: ['x...............', '................', '................'],
+  b2: ['x.......x.......', '................', '................'],
+  b3: ['x...x...x...x...', '................', '................'],
+  b4: ['x...x...x...x...', '................', '................'],
+  b5: ['x...x...x...x...', '..............x.', '................'],
+  b6: ['x...x...x...x...', '................', '................'],
+  d1: ['x...x...x...x...', '................', '................'],
+  d2: ['x.......x.......', '......x.......x.', '................'],
+  d3: ['x...x...x...x...', '......x.......x.', '................'],
+  d4: ['x...............', '................', '....h-------....'],
+  f1: ['x...x...x...x...', '............x.x.', '................'],
   z: ['x...............', 'x...............', 'x...............'],
 };
 
@@ -234,13 +234,11 @@ export function buildChart(level) {
   return { notes, cues, end: level.bars.length * 4 + (synth ? 3 : 1.5) };
 }
 
-// The five layers of the Ministry's system, one per track of the EP. `id: null`
+// The three layers of the Ministry's system: two tracks, then the boss fight. `id: null`
 // means the track is not out yet: the map shows it as locked. Fill in `id` when a
 // level is added to LEVELS above.
 export const ROADMAP = [
   { layer: 'FIREWALL', id: 'brazilian' },
   { layer: 'PROXY', id: 'acid' },
-  { layer: 'ANAGRAFE', id: null },
-  { layer: 'KERNEL', id: null },
-  { layer: 'SERVER', id: null },
+  { layer: 'SERVER', id: null }, // boss fight vs QUIETE.SYS
 ];
