@@ -174,11 +174,11 @@ export class Boot extends Phaser.Scene {
           this.cameras.main.shake(300, 0.012);
           body.setText(I.error).setColor('#b8121a');
           const mars = this.add
-            .image(W / 2, wy + wh + px(6), 'mars-glitch')
+            .image(W - px(74), wy + wh + px(70), 'mars-glitch')
             .setOrigin(0.5, 1)
-            .setScale(K * 2.2)
+            .setScale(K * 1.8)
             .setDepth(7);
-          this.tweens.add({ targets: mars, y: wy + wh - px(10), duration: 180, ease: 'Back.Out' });
+          this.tweens.add({ targets: mars, y: wy + wh + px(40), duration: 180, ease: 'Back.Out' });
           this.time.delayedCall(1300, () => {
             this.cameras.main.fadeOut(250);
             this.time.delayedCall(260, () =>

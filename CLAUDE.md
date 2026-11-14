@@ -15,11 +15,19 @@ Chi lavora qui: Stefano (Stephen Mars), full stack developer. Parlagli in italia
 - Estetica: pixel art, rosso (#ff2a2a) su nero, finestre Y2K argentate, più l'immaginario underground UK: soundsystem, radio pirata, palazzoni, flyer rave fotocopiati (retino, fuori registro, scritte giganti a contorno), etichetta white label. Tutto passa da uno shader CRT. Palette stretta: nero, rosso, carta, argento. Il ciano compare solo come frangia dell'aberrazione.
 - Rollout previsto: ogni singolo pubblicato sblocca un nuovo livello; il gioco può uscire prima come teaser con 1-2 livelli. A fine partita: card condivisibile 9:16 e, quando c'è, link a Spotify/Bandcamp.
 
+## Regole di design (decise dopo i test di gioco)
+
+- **Nessuno legge mentre suona.** In partita solo parole giganti da 1-2 parole; le frasi stanno nei pannelli della storia (max ~8 parole). Non rimettere bolle di dialogo sopra l'autostrada.
+- **Il gioco è la promozione**: si apre come finto "aggiornamento di sicurezza" del Ministero (installer), mostra una lower third radio a inizio livello (artista, traccia, EP, data), dà un "pacchetto" per ogni traccia finita, chiude con ascolta/condividi/classifica. Data, link e premio stanno in `src/campaign.js` (data attuale: 7 febbraio 2027, indicativa).
+- Classifica online con Cloudflare Worker (`worker/`), premio ai primi 3; senza `VITE_API_URL` resta locale.
+- Accessibilità: "effetti ridotti" (`reducedFx()`), niente lampi o inversioni se attivo.
+- Timing: calibrazione latenza in `Calibrate` (offset salvato in settings, usato da `Play.begin`). La griglia della traccia è stata misurata sul segnale: nessuna deriva.
+
 ## Stato
 
-Fatto: Vite + Phaser 3, scene Boot / Story / Play / End. Motore a corsie con note singole e note lunghe. **Livello 1: BRAZILIAN DUB**, traccia vera (clip 0:27-1:08, 140 BPM, fade in e fade out), note scritte a mano sopra l'analisi del segnale. Capitolo 1 della storia (intro e tre finali). Shader CRT, soundsystem e palazzi che reagiscono all'audio, modalità Overdrive al 100%, verbale del Ministero come schermata finale. Sprite: Mars in 7 espressioni (neutral, glitch, surprised, win, sad, angry, shout), il Ministro in 2 (calm, angry). Schermo adattivo: altezza logica calcolata sul telefono, risoluzione fino a 3x. Deploy su GitHub Pages via workflow.
+Fatto: Vite + Phaser 3, scene Boot (installer) / Story / Play / End / Hub (mappa) / Board (classifica) / Calibrate. Motore a corsie con note singole e note lunghe. **Livello 1: BRAZILIAN DUB**, traccia vera (clip 0:27-1:08, 140 BPM, fade in e fade out), note scritte a mano sopra l'analisi del segnale. Capitolo 1 della storia (intro e tre finali). Shader CRT, soundsystem e palazzi che reagiscono all'audio, modalità Overdrive al 100%, verbale del Ministero come schermata finale. Sprite: Mars in 7 espressioni (neutral, glitch, surprised, win, sad, angry, shout), il Ministro in 2 (calm, angry). Schermo adattivo: altezza logica calcolata sul telefono, risoluzione fino a 3x. Deploy su GitHub Pages via workflow.
 
-Non ancora fatto: verifica a orecchio delle note di BRAZILIAN DUB (sono state scritte senza poter ascoltare), prova di latenza su telefono, capitoli e livelli successivi, hub tra i livelli, calibrazione latenza, card condivisibile.
+Non ancora fatto: verifica a orecchio delle note di BRAZILIAN DUB (sono state scritte senza poter ascoltare), prova di latenza su telefono, livelli per le altre tracce, deploy del worker della classifica, link reali dell'EP, boss QUIETE.SYS giocabile.
 
 Tracce: i file completi stanno in `src/music/` e **non vanno mai pubblicati** (sono in `.gitignore`: l'EP non è uscito). Si pubblica solo la clip `*.clip.mp3` tagliata da `tools/analyze_track.py`.
 

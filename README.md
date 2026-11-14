@@ -1,7 +1,7 @@
 # OVERDRIVE.EXE
 
 Gioco web mobile (verticale) per promuovere l'EP **Overdrive** di Stephen Mars.
-Un rhythm game a corsie, un livello per traccia. Il Ministro ha vietato il basso, il ballo e le riunioni; Mars, hacker esterno che non sopporta l'ingiustizia, si dichiara un **virus** (trojan con backdoor) e scardina il sistema del Ministero strato per strato, riaccendendo un quartiere per ogni traccia. Easter egg: la sua ragazza compare in boot, nei popup e nel finale buono. Il nome sta in `EGG.name` in `src/texts.js`.
+Un rhythm game a corsie, un livello per traccia. Il gioco si presenta come un "aggiornamento di sicurezza obbligatorio" del Ministero: installarlo è avviare il trojan. Il Ministro ha vietato il basso, il ballo e le riunioni; Mars, hacker esterno che non sopporta l'ingiustizia, si dichiara un **virus** (trojan con backdoor) e scardina il sistema del Ministero strato per strato, riaccendendo un quartiere per ogni traccia. Easter egg: la sua ragazza compare in boot, nei popup e nel finale buono. Il nome sta in `EGG.name` in `src/texts.js`.
 
 Stack: [Phaser 3](https://phaser.io) + [Vite](https://vitejs.dev), JavaScript puro. Sprite e sfondi sono generati da codice; l'unico asset è la clip audio di ogni livello.
 
@@ -49,14 +49,23 @@ src/
   audio.js         riproduzione delle clip (fade, filtro) e sintetizzatore Web Audio
   fx.js            shader a tutto schermo (CRT, aberrazione, glitch, grana, inversione)
   ui.js            sfondo a retino, finestre Y2K, bolla di dialogo, scritte giganti
-  sprites.js       GENERATO: Mars in 7 espressioni, il Ministro in 2
+  sprites.js       GENERATO: Mars (7 espressioni), il Ministro (2), l'aiutante (4), QUIETE.SYS (2)
+  campaign.js      EP: data, link, premio, analytics. QUI si cambiano data e link
+  settings.js      impostazioni e progressi su questo telefono (effetti ridotti, calibrazione)
+  progress.js      record e pacchetti dell'EP (uno per traccia finita)
+  share.js         card 9:16 e condivisione
+  leaderboard.js   client della classifica online
+worker/            backend classifica (Cloudflare Worker), vedi worker/README.md
   charts/          GENERATO: tempi della clip e bozza delle note, una per traccia
   music/           le clip pubblicate (*.clip.mp3). Le tracce intere restano fuori da git
   scenes/
     Boot.js        schermata iniziale (il tocco sblocca l'audio)
     Story.js       la storia a pannelli, prima e dopo il livello
     Play.js        il gioco: autostrada, note, punteggio, HUD
-    End.js         risultato: il verbale del Ministero del Basso
+    End.js         risultato: il verbale, pacchetti, ascolta, condividi, classifica
+    Hub.js         mappa dei cinque strati del sistema
+    Board.js       classifica e modulo per il premio
+    Calibrate.js   calibrazione della latenza audio
 tools/
   make_sprites.py    rigenera src/sprites.js (npm run sprites)
   analyze_track.py   taglia la clip e misura la griglia (npm run track)
@@ -100,13 +109,33 @@ In `src/texts.js`, `TEXTS.story`. Un capitolo è una lista di pannelli:
 
 `who` è `mars`, `ministro` o `decree`. Espressioni di Mars: `neutral`, `sad`, `angry`, `shout`, `win`, `surprised`, `glitch`. Del Ministro: `calm`, `angry`. Dopo un livello parte il capitolo `<idLivello>_high`, `_mid` o `_low` secondo il risultato.
 
+## Regole di scrittura e di design
+
+- **In partita non si legge.** Solo parole giganti da 1-2 parole (`word` in `TEXTS.script`). Le frasi stanno nei pannelli della storia, massimo ~8 parole.
+- Il primo livello ha un tutorial senza testo (anello e un TOCCA / TIENI sulle prime note), mostrato una volta sola.
+- "Effetti ridotti" (schermata iniziale): niente inversione colori, niente lampi, niente scosse.
+
+## Promozione dell'EP
+
+Tutto sta in `src/campaign.js`: data (ora **7 febbraio 2027, indicativa**), link ascolto/pre-save/Instagram (vuoti = "link in arrivo"), premio per i primi 3.
+Ogni traccia finita con risultato almeno "segnalato" dà un **pacchetto** (5 in tutto). A fine livello: ascolta, condividi (card 9:16), classifica.
+Statistiche: costruisci con `VITE_PLAUSIBLE_DOMAIN=tuodominio` (Plausible) per contare partite, finali e click sui link.
+
+## Classifica online
+
+Backend in `worker/` (Cloudflare Worker + KV, gratis). Istruzioni in `worker/README.md`. Si attiva costruendo con `VITE_API_URL=<url del worker>`; senza, la classifica mostra solo il record locale. Il worker controlla solo che il punteggio sia plausibile: verifica a mano i vincitori prima di spedire il premio.
+
+## Timing
+
+Il clock è `AudioContext.currentTime` meno la latenza dichiarata dal browser, più la **calibrazione** (schermata iniziale > CALIBRA: tocca a tempo con i click; ±5 ms di rifinitura). Safari su iPhone dichiara male la latenza, quindi calibra al primo avvio, soprattutto con auricolari bluetooth. La griglia della traccia è stata verificata sul segnale: nessuna deriva (sotto i 5 ms sull'intera clip).
+
 ## Debug
 
 Parametri nell'URL, combinabili:
 
 | Parametro | Effetto |
 |---|---|
-| `?scene=play` / `end` / `story` | salta alla scena (su un browser normale l'audio parte solo dopo un tocco) |
+| `?scene=play` / `end` / `story` / `hub` / `board` / `calibrate` | salta alla scena (su un browser normale l'audio parte solo dopo un tocco) |
 | `?level=dub` | sceglie il livello per `?scene=play` |
 | `?story=brazilian_high` | sceglie il capitolo per `?scene=story` |
 | `?auto` | un bot suona tutte le note |
@@ -127,9 +156,10 @@ npm run sprites   # richiede python
 
 - rivedere a orecchio le note di BRAZILIAN DUB
 - prova di latenza su telefono e schermata di calibrazione
-- capitoli e livelli per le altre tracce, hub tra i livelli
-- card condivisibile 9:16 a fine partita
-- link a Spotify/Bandcamp quando l'EP esce
+- livelli per le altre tracce (la mappa ha già i cinque strati)
+- link ascolto/pre-save in `src/campaign.js` quando l'EP esce
+- deploy del worker e premio reale (vedi `worker/README.md`)
+- boss QUIETE.SYS giocabile (per ora compare solo nella storia)
 
 ## Deploy
 
