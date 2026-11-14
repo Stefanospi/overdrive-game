@@ -31,6 +31,9 @@ const OK_WIN = GRADES[2].win;
 const MISS_OD = -5;
 const HOLD_GRACE = 0.3; // beats: releasing this close to the end still counts
 const OD_MODE_BEATS = 16;
+const REWIND_PRE = 2; // beats of run-up before the first replayed note
+const REWIND_PAUSE = 0.35; // seconds of silence before the track restarts
+const REWIND_ANIM = 1.2; // seconds the tape takes to wind back
 const LANE_COLORS = [COLORS.red, COLORS.paper, COLORS.red];
 const JUDGE_COLORS = { perfect: '#ffffff', good: '#ff2a2a', ok: '#c0c0c0', miss: '#b8121a', broken: '#b8121a' };
 const KEYS = { A: 0, S: 1, D: 2, J: 0, K: 1, L: 2, LEFT: 0, DOWN: 1, RIGHT: 2 };
@@ -145,6 +148,9 @@ export class Play extends Phaser.Scene {
     if (this.reduced) this.cameras.main.shake = () => {};
     this.tutorial = L.n === 1 && !settings.get('tutorialDone', false) && !this.auto;
     this.missRun = 0;
+    this.shieldUntil = 0;
+    this.badge = null;
+    this.giftDone = false;
     track('level_start', { level: L.id });
     this.t0 = 0;
     this.lat = 0;
@@ -206,6 +212,9 @@ export class Play extends Phaser.Scene {
     this.lat = A.latency() + (calibration() + (Number(PARAMS.get('offset')) || 0)) / 1000;
     this.loading.setVisible(false);
 
+    this.buffer = buffer;
+    // build the reversed copy for the rewind now, while nothing else is happening
+    if (buffer) this.time.delayedCall(900, () => A.prepareRewind(buffer));
     if (buffer) {
       const tr = L.track;
       const when = c.currentTime + 0.25;
@@ -308,6 +317,7 @@ export class Play extends Phaser.Scene {
   // ---- time ------------------------------------------------------------------
   songBeat() {
     if (!this.ready) return -99;
+    if (this.rew) return this.rewBeat;
     return (A.clock() - this.t0 - this.lat) / this.beat;
   }
 
@@ -324,7 +334,7 @@ export class Play extends Phaser.Scene {
   press(l) {
     this.down[l] = true;
     this.laneFx[l] = 1;
-    if (this.over || !this.ready) return;
+    if (this.over || !this.ready || this.rew) return;
     const sb = this.songBeat();
     let best = null;
     let bestD = Infinity;
@@ -349,6 +359,10 @@ export class Play extends Phaser.Scene {
   // ---- scoring ---------------------------------------------------------------
   hit(n, delta) {
     const g = GRADES.find((x) => Math.abs(delta) <= x.win) || GRADES[2];
+    const s0 = this.score;
+    const o0 = this.od;
+    if (n.cb === undefined) n.cb = this.combo; // for the rewind: what the combo was before this note
+    n.grade = g.key;
     this.counts[g.key]++;
     this.missRun = 0;
     this.combo++;
@@ -378,9 +392,19 @@ export class Play extends Phaser.Scene {
     this.comboText.setScale(1.3);
     this.tweens.add({ targets: this.comboText, scale: 1, duration: 120 });
     if ([10, 25, 50, 75, 100].includes(this.combo)) this.react('combo', 'win');
+    n.pts = (n.pts || 0) + (this.score - s0);
+    n.odd = (n.odd || 0) + (this.od - o0);
   }
 
   finishHold(n, ok) {
+    const s0 = this.score;
+    const o0 = this.od;
+    this.finishHoldInner(n, ok);
+    n.pts = (n.pts || 0) + (this.score - s0);
+    n.odd = (n.odd || 0) + (this.od - o0);
+  }
+
+  finishHoldInner(n, ok) {
     if (n.sub) n.sub.stop();
     n.sub = null;
     this.held[n.lane] = null;
@@ -397,22 +421,36 @@ export class Play extends Phaser.Scene {
   }
 
   miss(n) {
+    if (this.shielded()) {
+      n.st = 'done'; // the shield forgives it: no miss, no penalty
+      return;
+    }
     n.st = 'miss';
+    n.grade = 'miss';
+    if (n.cb === undefined) n.cb = this.combo;
+    const o0 = this.od;
     this.counts.miss++;
     this.fail('miss', MISS_OD);
+    n.odd = (n.odd || 0) + (this.od - o0);
+  }
+
+  shielded() {
+    return this.songBeat() < this.shieldUntil;
   }
 
   fail(key, od) {
+    if (this.shielded()) return;
     if (this.combo >= 8) this.react('miss', Math.random() < 0.5 ? 'sad' : 'angry');
+    // remember what this streak of misses costs: the rewind bonus gives it back
+    if (!this.missRun) this.streak = { combo: this.combo, od: 0 };
+    this.streak.od += -od;
     this.combo = 0;
     this.addOd(od);
-    // four misses in a row: the helper steps in once in a while
     this.missRun = (this.missRun || 0) + 1;
-    if (this.missRun >= 4 && this.time.now > (this.nextHelp || 0) && !this.odMode) {
+    if (this.missRun >= 4 && this.time.now > (this.nextHelp || 0) && !this.odMode && !this.badge) {
       this.missRun = 0;
       this.nextHelp = this.time.now + 25000;
-      this.addOd(12);
-      this.time.delayedCall(350, () => !this.over && this.helperSay(pick(TEXTS.helper.rescue), 'wink', 1200));
+      this.spawnBadge('rewind');
     }
     this.missEnv = 1;
     this.showJudge(key, '');
@@ -481,6 +519,8 @@ export class Play extends Phaser.Scene {
 
   // Giant word with a dark strip behind it: readable at a glance, never a sentence.
   flashWord(word, ms = 1100) {
+    this.wordUntil = this.time.now + ms;
+    if (this.popup) this.popup.setAlpha(0.2); // the word has priority over any old-style window
     const t = this.wordText;
     this.tweens.killTweensOf([t, this.wordBar]);
     t.setText(word).setAlpha(1).setScale(1.5);
@@ -534,7 +574,10 @@ export class Play extends Phaser.Scene {
     this.tweens.add({ targets: c, alpha: 0, delay: 3000, duration: 400 });
   }
 
+  // Old-style system window. One at a time, only in the upper part of the speaker stack,
+  // and never while a word, the helper badge or a rewind needs the same space.
   spawnPopup() {
+    if (this.popup || this.badge || this.rew) return;
     const w = px(176);
     const h = px(104);
     const win = buildWindow(this, w, h, 'AVVISO.exe');
@@ -546,11 +589,195 @@ export class Play extends Phaser.Scene {
       lineSpacing: -px(3),
     });
     win.add(body);
-    const maxY = Math.max(130, this.stackBottom - 122);
-    win.setPosition(Phaser.Math.Between(px(14), W - w - px(24)), Phaser.Math.Between(px(126), px(maxY)));
-    win.setRotation(Phaser.Math.FloatBetween(-0.06, 0.06)).setDepth(8).setScale(0.6);
-    this.tweens.add({ targets: win, scale: 1, duration: 110, ease: 'Back.Out' });
-    this.tweens.add({ targets: win, alpha: 0, delay: 2200, duration: 400, onComplete: () => win.destroy() });
+    // the lower part of the stack belongs to the word and the badge: shrink to fit above it
+    const room = this.stackBottom - 70 - 126;
+    const sc = Phaser.Math.Clamp(room / 104, 0.55, 1);
+    win.setPosition(Phaser.Math.Between(px(14), W - w * sc - px(24)), px(126));
+    win.setRotation(Phaser.Math.FloatBetween(-0.05, 0.05)).setDepth(8).setScale(0.6 * sc);
+    this.popup = win;
+    this.tweens.add({ targets: win, scale: sc, duration: 110, ease: 'Back.Out' });
+    this.tweens.add({
+      targets: win,
+      alpha: 0,
+      delay: 1900,
+      duration: 350,
+      onComplete: () => {
+        if (this.popup === win) this.popup = null;
+        win.destroy();
+      },
+    });
+  }
+
+  killPopup() {
+    const win = this.popup;
+    if (!win) return;
+    this.popup = null;
+    this.tweens.killTweensOf(win);
+    this.tweens.add({ targets: win, alpha: 0, duration: 120, onComplete: () => win.destroy() });
+  }
+
+  // ---- the helper bonus -------------------------------------------------------
+  // A badge with her face appears above the speakers for a few seconds. Tapping it is
+  // a power-up: REWIND after a streak of misses (combo and infection come back), or the
+  // free BONUS ROOT mid-level. Both also give a shield: misses are forgiven for 8 beats.
+  spawnBadge(kind) {
+    if (this.badge || this.over) return;
+    this.killPopup();
+    const r = px(34);
+    const c = this.add.container(CX, px(Math.max(this.stackBottom - 126, 160))).setDepth(9.6).setScale(0.3).setAlpha(0);
+    const disc = this.add.graphics();
+    disc.fillStyle(0x000000, 0.88).fillCircle(0, 0, r);
+    disc.lineStyle(px(3), COLORS.silver, 1).strokeCircle(0, 0, r);
+    const s = K * 1.5;
+    const face = this.add.image(0, -(26 * s) / 2, 'girl-happy').setOrigin(0.5, 0).setScale(s).setCrop(0, 0, 36, 26);
+    const ring = this.add.graphics();
+    const label = this.add
+      .text(0, r + px(9), TEXTS.helper.spawn, { fontFamily: FONT_PS, fontSize: px(7) + 'px', color: '#ffffff' })
+      .setOrigin(0.5);
+    c.add([disc, face, ring, label]);
+    c.setSize(r * 2 + px(16), r * 2 + px(16));
+    c.setInteractive({ useHandCursor: true });
+    c.on('pointerdown', (p, lx, ly, ev) => {
+      if (ev && ev.stopPropagation) ev.stopPropagation();
+      this.useBackup();
+    });
+    this.tweens.add({ targets: c, scale: 1, alpha: 1, duration: 200, ease: 'Back.Out' });
+    this.badge = { c, ring, r, kind, born: this.time.now, ms: 5500 };
+    if (navigator.vibrate) navigator.vibrate(20);
+  }
+
+  drawBadge() {
+    const b = this.badge;
+    if (!b) return;
+    const frac = 1 - (this.time.now - b.born) / b.ms;
+    if (frac <= 0) {
+      this.removeBadge();
+      return;
+    }
+    const blink = frac < 0.25 && Math.floor(this.time.now / 120) % 2 ? 0.45 : 1;
+    b.c.setAlpha(blink);
+    b.ring.clear().lineStyle(px(4), COLORS.red, 1).beginPath().arc(0, 0, b.r + px(5), -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * frac).strokePath();
+  }
+
+  removeBadge() {
+    const b = this.badge;
+    if (!b) return;
+    this.badge = null;
+    b.c.disableInteractive();
+    this.tweens.add({ targets: b.c, alpha: 0, scale: 0.4, duration: 160, onComplete: () => b.c.destroy() });
+  }
+
+  useBackup() {
+    const b = this.badge;
+    if (!b || this.over) return;
+    const kind = b.kind;
+    this.removeBadge();
+    const T = TEXTS.helper;
+    this.shieldUntil = this.songBeat() + 8;
+    if (kind === 'rewind' && this.buffer) {
+      this.rewindTrack();
+      this.helperSay(T.rewind, 'wink', 1300);
+      track('backup_used', { kind });
+      return;
+    }
+    if (kind === 'rewind') {
+      const st = this.streak || { combo: 0, od: 0 };
+      this.combo = Math.max(this.combo, st.combo);
+      this.addOd(st.od);
+      this.missEnv = 0;
+      this.spike = 1;
+      this.flash = 0.35;
+      A.rewind();
+    } else {
+      this.addOd(20);
+      this.addScore(1000);
+      this.flash = 0.5;
+    }
+    this.missRun = 0;
+    this.helperSay(kind === 'rewind' ? T.rewind : T.gift, 'wink', 1300);
+    this.time.delayedCall(1400, () => !this.over && this.flashWord(T.shield, 900));
+    track('backup_used', { kind });
+  }
+
+  // The real rewind (DJ Hero style). Phase 1: the highway runs backwards, so the notes you
+  // already played fly back up toward the speakers, while the stretch just played is heard
+  // reversed at tape speed. Phase 2 (endRewind): a beat of silence, then the track restarts
+  // a few bars back and the notes come again. Whatever the rewound stretch gave or cost is
+  // taken back, so replaying it cannot count twice.
+  rewindTrack() {
+    if (this.rew || !this.buffer) return;
+    const tr = this.level.track;
+    const sb = this.songBeat();
+    const nb = Math.max(0, Math.floor((sb - 6) / 4) * 4); // a clean bar start, 6-10 beats back
+    const target = nb - REWIND_PRE;
+    if (this.track) this.track.tapeStop(0.12);
+    A.rewindSound(this.buffer, tr.lead + target * this.beat, tr.lead + sb * this.beat, REWIND_ANIM);
+    this.rewBeat = sb;
+    this.rew = { start: A.clock(), dur: REWIND_ANIM, from: sb, to: target - (REWIND_PAUSE + this.lat) / this.beat, nb, target };
+    this.held.fill(null);
+    for (const n of this.notes) {
+      if (n.sub) n.sub.stop();
+      n.sub = null;
+    }
+    this.flashWord('<< REWIND', 1500);
+    this.spike = 1;
+  }
+
+  endRewind() {
+    const R = this.rew;
+    const tr = this.level.track;
+    const { nb, target } = R;
+
+    // take back what the rewound stretch gave or cost
+    let combo = null;
+    for (const n of this.notes) {
+      if (n.st === 'hold') n.st = 'done';
+      if (n.b < nb - 0.01) continue;
+      if (combo === null && n.cb !== undefined) combo = n.cb;
+      if (n.grade && this.counts[n.grade] > 0) this.counts[n.grade]--;
+      this.score -= n.pts || 0;
+      this.od -= n.odd || 0;
+      n.st = 'wait';
+      n.pts = 0;
+      n.odd = 0;
+      n.grade = null;
+      n.cb = undefined;
+    }
+    this.score = Math.max(0, this.score);
+    this.od = Phaser.Math.Clamp(this.od, 0, 99);
+    if (combo !== null) this.combo = combo;
+    this.missRun = 0;
+    this.missEnv = 0;
+    this.odMode = false;
+    this.tweens.add({ targets: this.inv, v: 0, duration: 200 });
+
+    // restart the track: silence for REWIND_PAUSE, then from `target`
+    const c = A.getCtx();
+    const when = c.currentTime + REWIND_PAUSE;
+    const offset = Math.max(0, tr.lead + target * this.beat);
+    this.t0 = when - offset + tr.lead;
+    this.track = A.playTrack(this.buffer, when, offset, { ramp: 0.06, fadeOutAt: tr.length - tr.fadeOut, fadeOut: tr.fadeOut });
+    this.rew = null;
+
+    // cues and script lines follow the new position
+    this.ci = this.cues.findIndex((e) => e.b >= target);
+    if (this.ci < 0) this.ci = this.cues.length;
+    this.vi = this.ci;
+    this.si = this.script.findIndex((q) => q.bar * 4 >= nb);
+    if (this.si < 0) this.si = this.script.length;
+    this.lastBeat = -99;
+    this.flash = 0.25;
+  }
+
+  // The shield: a bright line across the hit zone while misses are forgiven.
+  drawShield(sb) {
+    if (!this.shieldG) this.shieldG = this.add.graphics().setDepth(8);
+    const g = this.shieldG.clear();
+    if (sb >= this.shieldUntil) return;
+    const left = this.shieldUntil - sb;
+    const a = left < 1.5 ? 0.35 + 0.35 * Math.sin(this.time.now / 60) : 0.8;
+    g.lineStyle(px(4), 0xffffff, a).lineBetween(px(10), px(this.hitY + 24), W - px(10), px(this.hitY + 24));
+    g.lineStyle(px(1), COLORS.red, a).lineBetween(px(10), px(this.hitY + 30), W - px(10), px(this.hitY + 30));
   }
 
   // ---- feedback --------------------------------------------------------------
@@ -634,7 +861,7 @@ export class Play extends Phaser.Scene {
         });
       }
     }
-    if (bi % 8 === 4 && this.od >= 30 && Math.random() < 0.5) this.spawnPopup();
+    if (bi % 8 === 4 && this.od >= 30 && Math.random() < 0.5 && this.time.now > (this.wordUntil || 0) + 600) this.spawnPopup();
   }
 
   // First run only: a ring and one word on the lane of each of the first notes.
@@ -689,10 +916,19 @@ export class Play extends Phaser.Scene {
   update(time, delta) {
     const dt = Math.min(0.05, delta / 1000);
     const now = A.clock();
-    const sb = this.songBeat();
     const L = this.level;
+    if (this.rew) {
+      const R = this.rew;
+      const p = Math.min(1, (now - R.start) / R.dur);
+      const e = 1 - Math.pow(1 - p, 2.4); // tape: fast at first, slowing into the restart
+      this.rewBeat = R.from + (R.to - R.from) * e;
+      this.spike = Math.max(this.spike, 0.6);
+      this.laneFx.fill(0);
+      if (p >= 1) this.endRewind();
+    }
+    const sb = this.songBeat();
 
-    if (this.ready) {
+    if (this.ready && !this.rew) {
       // schedule sounds a little ahead; drop anything already in the past
       while (this.ci < this.cues.length && this.t0 + this.cues[this.ci].b * this.beat < now + 0.25) {
         const ev = this.cues[this.ci++];
@@ -712,7 +948,7 @@ export class Play extends Phaser.Scene {
     }
 
     // notes that resolve on their own
-    for (const n of this.notes) {
+    for (const n of this.rew ? [] : this.notes) {
       if (n.b - sb > 1) break;
       if (n.st === 'wait') {
         if (this.auto && sb >= n.b) {
@@ -722,7 +958,9 @@ export class Play extends Phaser.Scene {
       } else if (n.st === 'hold') {
         if (sb >= n.b + n.len) this.finishHold(n, true);
         else {
-          this.score += Math.round(delta * 0.1) * (this.odMode ? 2 : 1);
+          const tick = Math.round(delta * 0.1) * (this.odMode ? 2 : 1);
+          this.score += tick;
+          n.pts = (n.pts || 0) + tick;
           if (Math.random() < 0.5) this.burst(this.laneX(n.lane, 1), px(this.hitY), COLORS.red, 1, 0.7);
         }
       }
@@ -732,7 +970,7 @@ export class Play extends Phaser.Scene {
       this.od = 55;
       this.tweens.add({ targets: this.inv, v: 0, duration: 400 });
     }
-    if (!this.over && sb >= this.endBeat) this.finishLevel();
+    if (!this.over && !this.rew && sb >= this.endBeat) this.finishLevel();
 
     // envelopes
     const fall = (v, rate) => Math.max(0, v - dt * rate);
@@ -766,6 +1004,12 @@ export class Play extends Phaser.Scene {
     this.typeR.tilePositionX += speed;
     this.ticker.tilePositionX += 0.05 * delta * K;
 
+    this.drawBadge();
+    this.drawShield(sb);
+    if (!this.giftDone && L.giftBeat !== undefined && sb >= L.giftBeat && !this.badge && !this.over) {
+      this.giftDone = true;
+      this.spawnBadge('gift');
+    }
     this.drawTutorial(sb);
     this.drawStage(sb, dt, bands, bass);
     this.drawRoad(sb);
@@ -931,7 +1175,7 @@ export class Play extends Phaser.Scene {
     const gone = past * 1.25; // a little below the bottom edge
     for (let i = this.notes.length - 1; i >= 0; i--) {
       const nt = this.notes[i];
-      if (nt.st === 'done' || nt.st === 'broken') continue;
+      if ((nt.st === 'done' || nt.st === 'broken') && !this.rew) continue;
       const dt = nt.b - sb;
       if (dt > ap || dt + nt.len < gone) continue;
       const dead = nt.st === 'miss';
@@ -1010,6 +1254,13 @@ export class Play extends Phaser.Scene {
       g.fillStyle(p.color, p.life / p.max).fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
     }
 
+    if (this.rew) {
+      // tape streaks across the highway while it winds back
+      for (let i = 0; i < 18; i++) {
+        const y = this.yOf(S_FAR) + Math.random() * (px(LH) - this.yOf(S_FAR));
+        g.fillStyle(0xffffff, 0.1 + Math.random() * 0.22).fillRect(Math.random() * W * 0.6, y, W * (0.1 + Math.random() * 0.5), px(1 + Math.random() * 2));
+      }
+    }
     if (this.flash > 0) g.fillStyle(0xffffff, this.flash * (this.reduced ? 0.1 : 0.5)).fillRect(0, 0, W, H);
   }
 

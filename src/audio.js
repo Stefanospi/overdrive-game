@@ -114,7 +114,7 @@ export function loadTrack(url) {
 // Plays a clip starting at audio-clock time `when`, from `offset` seconds into it.
 // Fade times are positions inside the clip. The track skips the synth's
 // compressor so the master is heard as it was made.
-export function playTrack(buffer, when, offset = 0, { fadeIn = 0, fadeOutAt = Infinity, fadeOut = 1, gain = 0.9 } = {}) {
+export function playTrack(buffer, when, offset = 0, { fadeIn = 0, fadeOutAt = Infinity, fadeOut = 1, gain = 0.9, ramp = 0 } = {}) {
   const c = getCtx();
   out();
   const src = c.createBufferSource();
@@ -137,6 +137,10 @@ export function playTrack(buffer, when, offset = 0, { fadeIn = 0, fadeOutAt = In
       const p = offset / fadeIn + (1 - offset / fadeIn) * (i / steps);
       g.gain.linearRampToValueAtTime(gain * p * p, zero + fadeIn * p);
     }
+  } else if (ramp > 0) {
+    // restarting mid-track (rewind): a very short fade so the cut does not click
+    g.gain.setValueAtTime(0.0001, when);
+    g.gain.linearRampToValueAtTime(gain, when + ramp);
   } else {
     g.gain.setValueAtTime(gain, when);
   }
@@ -154,6 +158,21 @@ export function playTrack(buffer, when, offset = 0, { fadeIn = 0, fadeOutAt = In
         /* already stopped */
       }
       g.disconnect();
+    },
+    // the tape slows to a halt (rewind power-up)
+    tapeStop(dur = 0.45) {
+      const t = c.currentTime;
+      src.playbackRate.cancelScheduledValues(t);
+      src.playbackRate.setValueAtTime(1, t);
+      src.playbackRate.exponentialRampToValueAtTime(0.12, t + dur);
+      g.gain.cancelScheduledValues(t);
+      g.gain.setValueAtTime(Math.max(g.gain.value, 0.0001), t);
+      g.gain.linearRampToValueAtTime(0.0001, t + dur);
+      try {
+        src.stop(t + dur + 0.02);
+      } catch (e) {
+        /* already stopped */
+      }
     },
     // a missed note dunks the track under water for a moment
     muffle() {
@@ -411,4 +430,188 @@ export function startSub(hz, wobbleHz = 4.67) {
       lfo.stop(now + 0.2);
     },
   };
+}
+
+// Tape-rewind sweep, for the helper's REWIND power-up.
+export function rewind(t = getCtx().currentTime) {
+  const c = getCtx();
+  const o = c.createOscillator();
+  const f = c.createBiquadFilter();
+  const g = c.createGain();
+  o.type = 'sawtooth';
+  o.frequency.setValueAtTime(2200, t);
+  o.frequency.exponentialRampToValueAtTime(90, t + 0.42);
+  f.type = 'lowpass';
+  f.frequency.setValueAtTime(5000, t);
+  f.frequency.exponentialRampToValueAtTime(300, t + 0.42);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(0.16, t + 0.04);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
+  o.connect(f);
+  f.connect(g);
+  g.connect(out());
+  o.start(t);
+  o.stop(t + 0.5);
+}
+
+// The rewind you hear: the stretch that just played, reversed and sped up like a tape
+// being wound back. `startSec`/`endSec` are positions inside the clip. The reversed copy
+// of the whole clip is built once (prepareRewind) so a tap never stalls a frame.
+const reversedCache = new WeakMap();
+
+export function prepareRewind(buffer) {
+  if (reversedCache.has(buffer)) return reversedCache.get(buffer);
+  const c = getCtx();
+  const rev = c.createBuffer(buffer.numberOfChannels, buffer.length, buffer.sampleRate);
+  for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
+    const src = buffer.getChannelData(ch);
+    const dst = rev.getChannelData(ch);
+    const n = src.length;
+    for (let i = 0; i < n; i++) dst[i] = src[n - 1 - i];
+  }
+  reversedCache.set(buffer, rev);
+  return rev;
+}
+
+export function rewindSound(buffer, startSec, endSec, dur = 0.9) {
+  const c = getCtx();
+  const rev = prepareRewind(buffer);
+  const total = buffer.duration;
+  const from = Math.max(0, Math.min(total, endSec));
+  const span = Math.max(0.2, Math.min(from, endSec - startSec));
+  const t = c.currentTime;
+  const s = c.createBufferSource();
+  s.buffer = rev;
+  s.playbackRate.value = Math.min(16, span / dur);
+  const hp = c.createBiquadFilter();
+  hp.type = 'highpass';
+  hp.frequency.value = 280;
+  const g = c.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(0.75, t + 0.05);
+  g.gain.setValueAtTime(0.75, t + dur - 0.14);
+  g.gain.linearRampToValueAtTime(0.0001, t + dur);
+  s.connect(hp);
+  hp.connect(g);
+  g.connect(out());
+  s.start(t, total - from, span);
+  // a thin tape whir riding on top
+  const o = c.createOscillator();
+  const og = c.createGain();
+  o.type = 'sawtooth';
+  o.frequency.setValueAtTime(500, t);
+  o.frequency.exponentialRampToValueAtTime(2400, t + dur);
+  og.gain.setValueAtTime(0.0001, t);
+  og.gain.linearRampToValueAtTime(0.05, t + 0.1);
+  og.gain.linearRampToValueAtTime(0.0001, t + dur);
+  o.connect(og);
+  og.connect(out());
+  o.start(t);
+  o.stop(t + dur + 0.05);
+}
+
+// ---- story sounds -----------------------------------------------------------------------
+// Typing: a short blip per character, pitched per speaker, or a typewriter click.
+export function blip(hz, type = 'square', gain = 0.045) {
+  const c = getCtx();
+  if (c.state !== 'running') return;
+  const t = c.currentTime;
+  const o = c.createOscillator();
+  const g = c.createGain();
+  o.type = type;
+  o.frequency.value = hz * (0.94 + Math.random() * 0.12);
+  g.gain.setValueAtTime(gain, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.045);
+  o.connect(g);
+  g.connect(out());
+  o.start(t);
+  o.stop(t + 0.05);
+}
+
+export function typeClick() {
+  const c = getCtx();
+  if (c.state !== 'running') return;
+  const t = c.currentTime;
+  const s = noiseSource(false);
+  const f = c.createBiquadFilter();
+  const g = c.createGain();
+  f.type = 'bandpass';
+  f.frequency.value = 2200 + Math.random() * 900;
+  f.Q.value = 3;
+  g.gain.setValueAtTime(0.18, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
+  s.connect(f);
+  f.connect(g);
+  g.connect(out());
+  s.start(t);
+  s.stop(t + 0.04);
+}
+
+// Scene sounds for the story: siren, crowd, thud, zap (the plug), static.
+export function sfx(kind) {
+  const c = getCtx();
+  if (c.state !== 'running') return;
+  const t = c.currentTime;
+  if (kind === 'siren') {
+    const o = c.createOscillator();
+    const lfo = c.createOscillator();
+    const lg = c.createGain();
+    const g = c.createGain();
+    o.type = 'sawtooth';
+    o.frequency.value = 700;
+    lfo.frequency.value = 2.2;
+    lg.gain.value = 220;
+    lfo.connect(lg);
+    lg.connect(o.frequency);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.07, t + 0.2);
+    g.gain.linearRampToValueAtTime(0.0001, t + 1.8);
+    o.connect(g);
+    g.connect(out());
+    o.start(t);
+    lfo.start(t);
+    o.stop(t + 1.9);
+    lfo.stop(t + 1.9);
+  } else if (kind === 'crowd') {
+    const s = noiseSource(true);
+    const f = c.createBiquadFilter();
+    const g = c.createGain();
+    f.type = 'bandpass';
+    f.frequency.value = 650;
+    f.Q.value = 0.8;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.16, t + 0.8);
+    g.gain.linearRampToValueAtTime(0.0001, t + 2.2);
+    s.connect(f);
+    f.connect(g);
+    g.connect(out());
+    s.start(t);
+    s.stop(t + 2.3);
+  } else if (kind === 'thud') {
+    const o = c.createOscillator();
+    const g = c.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(110, t);
+    o.frequency.exponentialRampToValueAtTime(38, t + 0.35);
+    g.gain.setValueAtTime(0.5, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+    o.connect(g);
+    g.connect(out());
+    o.start(t);
+    o.stop(t + 0.45);
+  } else if (kind === 'zap' || kind === 'static') {
+    const s = noiseSource(false);
+    const f = c.createBiquadFilter();
+    const g = c.createGain();
+    f.type = 'highpass';
+    f.frequency.value = kind === 'zap' ? 1800 : 900;
+    g.gain.setValueAtTime(kind === 'zap' ? 0.3 : 0.18, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + (kind === 'zap' ? 0.3 : 0.5));
+    s.connect(f);
+    f.connect(g);
+    g.connect(out());
+    s.start(t);
+    s.stop(t + 0.6);
+    if (kind === 'zap') sfx('thud');
+  }
 }

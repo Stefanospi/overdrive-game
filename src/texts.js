@@ -16,6 +16,7 @@ export const TEXTS = {
     'Memoria: 640K. Dovrebbero bastare.',
     'Controllo subwoofer........ OK',
     'Controllo vicini........... IGNORATO',
+    'Firewall.................. ATTIVO',
     'Caricamento rivoluzione.... NEGATO',
     'Whitelist utenti: 1 (' + EGG.name + ')',
     'ATTENZIONE: intrusione in corso',
@@ -63,8 +64,8 @@ export const TEXTS = {
 
   // Scrolling strip under the HUD (decoration, low contrast).
   ticker: [
-    'MINISTERO DEL BASSO /// SCANSIONE IN CORSO /// NESSUNA ANOMALIA RILEVATA /// IL VOLUME È UN PRIVILEGIO /// ',
-    'ANOMALIA RILEVATA /// PAYLOAD IN ESECUZIONE /// 140 BPM /// IL BASSO È UN DIRITTO /// IL MINISTERO NON RISPONDE /// ',
+    'MINISTERO DEL BASSO /// FIREWALL ATTIVO /// ANTIVIRUS: QUIETE.SYS /// NESSUNA ANOMALIA RILEVATA /// SCANSIONE IN CORSO /// ',
+    'ANOMALIA RILEVATA /// PAYLOAD IN ESECUZIONE /// FIREWALL: BUCATO /// 140 BPM /// IL MINISTERO NON RISPONDE /// ',
   ],
 
   // ---- the story --------------------------------------------------------------
@@ -81,16 +82,27 @@ export const TEXTS = {
   story: {
     skip: 'SALTA',
     next: 'TOCCA',
+    // Panels may carry: scene (a drawn picture: city_lit, city_off, city_dark, city_on,
+    // protest, chaos, monitors), caption (place and time, for narration without a speaker),
+    // sfx (siren, crowd, thud, zap, static) and shake (ms).
     intro: {
       chapter: 'CAPITOLO 1',
-      title: 'IL DECRETO',
+      title: 'LA NOTTE DEL SILENZIO',
       panels: [
+        { scene: 'city_lit', caption: 'QUARTIERE SAN BASS, 23:40', text: 'Ogni sabato, da trent\'anni, il soundsystem accendeva le finestre.' },
+        { scene: 'city_off', caption: '23:58', sfx: 'zap', shake: 220, text: 'Stanotte il Ministero ha staccato la spina.' },
+        { scene: 'city_dark', caption: '00:00', text: 'Le casse sono spente. Le finestre pure. Nessuno ha detto niente.' },
         { who: 'decree', text: 'VIETATI: basso, ballo, riunioni, voce alta.' },
         { who: 'ministro', expr: 'calm', text: 'La quiete è obbligatoria. Ringraziate in silenzio.' },
-        { who: 'mars', expr: 'sad', text: 'Hanno spento il soundsystem del quartiere.' },
-        { who: 'mars', expr: 'angry', text: 'Non erano favori. Erano diritti.' },
-        { who: 'mars', expr: 'glitch', text: 'Io non sono un antivirus. Sono un virus.' },
-        { who: 'mars', expr: 'shout', text: 'Tu suoni. Io infetto. Andiamo.' },
+        { scene: 'protest', caption: 'PIAZZA DEL MINISTERO, 00:40', sfx: 'crowd', text: 'In cento sono scesi in piazza. Con i cartelli. Senza casse.' },
+        { scene: 'protest', caption: '01:20', text: 'Hanno gridato per ore. Il Ministero ha chiuso le persiane, una a una.' },
+        { scene: 'chaos', caption: '01:50', sfx: 'siren', shake: 300, text: 'Poi sono arrivati i droni. Per la vostra sicurezza.' },
+        { scene: 'chaos', caption: '02:05', sfx: 'thud', text: 'Nessuno li ha ascoltati. Nessuno li ha nemmeno visti.' },
+        { scene: 'monitors', who: 'mars', expr: 'sad', sfx: 'static', text: 'Io sì. Da un tetto, su sei schermi. Non ho potuto fare niente.' },
+        { scene: 'monitors', who: 'mars', expr: 'angry', text: 'Non erano favori. Erano diritti. Così scontati che nessuno li aveva scritti.' },
+        { scene: 'monitors', who: 'mars', expr: 'neutral', text: 'Ogni diritto tolto ha un firewall. Se la piazza non basta, bucheremo il sistema.' },
+        { who: 'mars', expr: 'glitch', sfx: 'static', text: 'Io non sono un antivirus. Sono un virus.' },
+        { who: 'mars', expr: 'shout', text: 'Tu suoni. Io infetto. Per chi è rimasto al buio. Andiamo.' },
       ],
     },
     // after level 1, by result
@@ -98,9 +110,10 @@ export const TEXTS = {
       chapter: 'CAPITOLO 1',
       title: 'FIREWALL CADUTO',
       panels: [
+        { scene: 'city_on', caption: 'QUARTIERE SAN BASS, 02:10', sfx: 'crowd', text: 'Una finestra. Poi dieci. Poi tutto il palazzo.' },
         { who: 'ministro', expr: 'angry', text: 'Chi ha lasciato entrare quell\'anomalia?' },
         { who: 'mars', expr: 'win', text: 'Errore 140: gioia non autorizzata.' },
-        { who: 'girl', expr: 'wink', text: 'Hai bucato un ministero. Il lavello resta pieno.' },
+        { who: 'girl', expr: 'happy', text: 'Sei stato bravissimo. Sono fiera di te.' },
         { who: 'mars', expr: 'shout', text: 'Primo quartiere acceso. Ne restano quattro.' },
       ],
     },
@@ -110,6 +123,7 @@ export const TEXTS = {
       panels: [
         { who: 'ministro', expr: 'calm', text: 'Un rumore breve. Lo considereremo un guasto.' },
         { who: 'mars', expr: 'neutral', text: 'Il firewall ha ceduto a metà. Non basta.' },
+        { who: 'girl', expr: 'happy', text: "Ci sei quasi. Un'altra prova e passi." },
         { who: 'mars', expr: 'angry', text: 'Un diritto non si chiede due volte.' },
       ],
     },
@@ -119,6 +133,7 @@ export const TEXTS = {
       panels: [
         { who: 'quiete', expr: 'smile', text: 'Posso aiutarla a stare zitto?' },
         { who: 'mars', expr: 'sad', text: 'Quarantena. Il quartiere resta al buio.' },
+        { who: 'girl', expr: 'neutral', text: 'Non mollare. Respira e riprova. Ce la fai.' },
         { who: 'mars', expr: 'angry', text: 'Un virus non chiede il permesso. Si replica.' },
       ],
     },
@@ -148,26 +163,36 @@ export const TEXTS = {
 
   // One or two words, shown big near the speaker stack.
   react: {
-    combo: ['INFEZIONE', 'ALTRE FINESTRE', 'COSÌ'],
-    miss: ['PACCHETTO PERSO', 'TRACCIATO', 'RIPRENDI'],
+    combo: ['INFEZIONE', 'FIREWALL GIÙ', 'ACCESSO'],
+    miss: ['RILEVATO', 'TRACCIATO', 'ANTIVIRUS!'],
   },
 
   loading: 'SINTONIZZAZIONE...',
-  // The helper (Easter egg): shows up in the Mars window when the root access opens
-  // and when the player is losing the groove (4 misses in a row: +12 infection).
+  // The helper (Easter egg) is a tappable bonus: a badge with her face appears for a
+  // few seconds. Tapping it fires a power-up (see Play.useBackup).
   helper: {
-    root: ['BACKUP'],
-    rescue: ['BACKUP +12'],
+    root: ['BACKUP'], // she cheers when root access opens
+    spawn: 'TOCCA LEI',
+    rewind: 'REWIND', // after a streak of misses: the track goes back a few bars and replays
+    gift: 'BONUS ROOT', // the free one, mid-level
+    shield: 'SCUDO',
   },
   overdrive: ['SOGLIA SUPERATA'],
   overdriveMode: ['ACCESSO ROOT'],
 
+  // Fake system notifications. Security jargon, deadpan.
   popups: [
-    'Il Ministero ti informa: stai andando bene. Smettila.',
-    'Aggiornamento disponibile. Non per te.',
-    'Il sub è stato classificato come arma impropria.',
+    'Firewall del Ministero: 1 minaccia in corso. Non è un errore.',
+    'Password scaduta. Il basso non ne ha mai avuta una.',
+    'Certificato non valido: la quiete è autofirmata.',
+    'Accesso non autorizzato rilevato. Autorizzazione richiesta: ballare.',
+    'Antivirus aggiornato. Non ha trovato nulla. Come sempre.',
+    'Autenticazione a due fattori: premi il basso due volte.',
+    'Sessione scaduta. Riaccedi in silenzio.',
+    'Porta 140 aperta. Qualcuno ha dimenticato di chiuderla.',
+    'Intrusione bloccata. Poi sbloccata. Poi ballata.',
     'Quarantena fallita. Il file si è messo a ballare.',
-    'File trovato: ' + EGG.name.toLowerCase() + '_ti_amo.txt. Accesso negato. Non a lui.',
+    'Il sub è stato classificato come arma impropria.',
   ],
 
   // ---- result screen: an official report ------------------------------------
@@ -227,10 +252,12 @@ export const TEXTS = {
   // ---- calibration ---------------------------------------------------------------
   calibrate: {
     title: 'CALIBRAZIONE',
-    body: 'Tocca lo schermo a tempo con i click, finché si fermano.',
+    body: 'Metti le cuffie con cui giocherai. Tocca a tempo con i click, finché si fermano.',
     start: 'TOCCA PER INIZIARE',
     done: (ms) => `FATTO. Compensazione: ${ms > 0 ? '+' : ''}${ms} ms`,
     redo: 'RIFAI',
     ok: 'OK',
+    skip: 'SALTA',
+    go: 'CONTINUA',
   },
 };

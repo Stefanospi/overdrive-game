@@ -20,6 +20,11 @@ export class Calibrate extends Phaser.Scene {
     super('Calibrate');
   }
 
+  init(data) {
+    // `next` = { scene, data }: set when this runs automatically on first launch
+    this.next = data && data.next ? data.next : null;
+  }
+
   create() {
     drawBackdrop(this);
     this.fx = attachFx(this);
@@ -45,10 +50,13 @@ export class Calibrate extends Phaser.Scene {
     this.input.on('pointerdown', () => this.onTap());
 
     // manual fine tuning and exit
-    button(this, W / 2 - px(80), px(LH - 120), px(56), px(30), '-5', () => this.nudge(-5), { size: 10, depth: 6 });
-    button(this, W / 2 + px(80), px(LH - 120), px(56), px(30), '+5', () => this.nudge(5), { size: 10, depth: 6 });
-    button(this, W / 2, px(LH - 120), px(84), px(30), C.redo, () => this.reset(), { size: 8, depth: 6 });
-    button(this, W / 2, px(LH - 76), px(150), px(32), C.ok, () => this.leave(), { primary: true, size: 10, depth: 6 });
+    if (!this.next) {
+      button(this, W / 2 - px(80), px(LH - 120), px(56), px(30), '-5', () => this.nudge(-5), { size: 10, depth: 6 });
+      button(this, W / 2 + px(80), px(LH - 120), px(56), px(30), '+5', () => this.nudge(5), { size: 10, depth: 6 });
+      button(this, W / 2, px(LH - 120), px(84), px(30), C.redo, () => this.reset(), { size: 8, depth: 6 });
+    }
+    // on first launch the same button skips, then becomes CONTINUA
+    this.okBtn = button(this, W / 2, px(LH - 76), px(150), px(32), this.next ? C.skip : C.ok, () => this.leave(), { primary: true, size: 10, depth: 6 });
   }
 
   showValue() {
@@ -108,11 +116,19 @@ export class Calibrate extends Phaser.Scene {
     settings.set('offsetMs', offset);
     this.status.setText(TEXTS.calibrate.done(offset));
     this.showValue();
+    settings.set('calibrated', true);
+    if (this.next) {
+      this.okBtn.label.setText(TEXTS.calibrate.go);
+      this.time.delayedCall(1600, () => this.leave());
+    }
   }
 
   leave() {
+    if (this.leaving) return;
+    this.leaving = true;
+    settings.set('calibrated', true); // skipping counts: do not nag again
     this.cameras.main.fadeOut(220);
-    this.time.delayedCall(230, () => this.scene.start('Boot'));
+    this.time.delayedCall(230, () => (this.next ? this.scene.start(this.next.scene, this.next.data) : this.scene.start('Boot')));
   }
 
   update() {

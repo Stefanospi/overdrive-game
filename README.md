@@ -107,7 +107,7 @@ In `src/texts.js`, `TEXTS.story`. Un capitolo è una lista di pannelli:
 { who: 'mars', expr: 'angry', text: 'Non erano favori. Erano diritti.' }
 ```
 
-`who` è `mars`, `ministro` o `decree`. Espressioni di Mars: `neutral`, `sad`, `angry`, `shout`, `win`, `surprised`, `glitch`. Del Ministro: `calm`, `angry`. Dopo un livello parte il capitolo `<idLivello>_high`, `_mid` o `_low` secondo il risultato.
+`who` è `mars`, `ministro`, `girl`, `quiete` o `decree` (oppure assente, per la narrazione con `caption`). Un pannello può avere `scene` (immagine disegnata da codice in `src/storyScenes.js`: `city_lit`, `city_off`, `city_dark`, `city_on`, `protest`, `chaos`, `monitors`), `sfx` (`siren`, `crowd`, `thud`, `zap`, `static`) e `shake` (ms). Mentre il testo si scrive, ogni personaggio ha il suo suono di battitura. Espressioni di Mars: `neutral`, `sad`, `angry`, `shout`, `win`, `surprised`, `glitch`. Del Ministro: `calm`, `angry`. Dopo un livello parte il capitolo `<idLivello>_high`, `_mid` o `_low` secondo il risultato.
 
 ## Regole di scrittura e di design
 
@@ -127,7 +127,7 @@ Backend in `worker/` (Cloudflare Worker + KV, gratis). Istruzioni in `worker/REA
 
 ## Timing
 
-Il clock è `AudioContext.currentTime` meno la latenza dichiarata dal browser, più la **calibrazione** (schermata iniziale > CALIBRA: tocca a tempo con i click; ±5 ms di rifinitura). Safari su iPhone dichiara male la latenza, quindi calibra al primo avvio, soprattutto con auricolari bluetooth. La griglia della traccia è stata verificata sul segnale: nessuna deriva (sotto i 5 ms sull'intera clip).
+Il clock è `AudioContext.currentTime` meno la latenza dichiarata dal browser, più la **calibrazione** (schermata iniziale > CALIBRA: tocca a tempo con i click; ±5 ms di rifinitura). La calibrazione parte da sola al primo avvio (si può saltare); Safari su iPhone dichiara male la latenza, quindi falla con le stesse cuffie con cui giocherai, soprattutto con auricolari bluetooth. La griglia della traccia è stata verificata sul segnale: nessuna deriva (sotto i 5 ms sull'intera clip).
 
 ## Debug
 

@@ -267,53 +267,58 @@ def build_minister(expr):
 
 
 def build_girl(expr):
-    """The helper (Easter egg): sporty outfit, long dark hair, green eyes, silver bracelets,
-    a pomegranate tattoo (red) on the right forearm."""
+    """The helper (Easter egg): long dark hair, green eyes, silver bracelets, a pomegranate
+    tattoo (red) on the right forearm. Outfit: elegant athleisure, echoing Mars's own: a fitted
+    black track jacket with two silver sleeve stripes over a white top, high-waist black
+    wide-leg track trousers with a silver side stripe, chunky white sneakers."""
     g = new()
     # hair behind the head and shoulders
     disc(g, 17.5, 13, 9.5, 11, 'L')
     sr(g, 7, 10, 10, 26, 'L')
-    # chunky white sneakers, socks, legs
-    sr(g, 8, 55, 16, 57, 'W')
-    sr(g, 8, 57, 16, 57, 'G')
+    # chunky white sneakers
+    sr(g, 7, 55, 16, 57, 'W')
+    sr(g, 7, 57, 16, 57, 'G')
     sr(g, 9, 55, 11, 55, 'w')
     sr(g, 13, 56, 15, 56, 'w')
-    sr(g, 11, 54, 15, 54, 'W')
-    sr(g, 11, 52, 15, 53, 'S')
-    # ripped denim shorts
-    sr(g, 9, 44, 17, 51, 'D')
-    sr(g, 17, 45, 17, 51, 'd')
-    sr(g, 9, 51, 16, 51, 'd')
-    rect(g, 12, 48, 13, 49, 'S')
-    px(g, 12, 50, 'W')
-    px(g, 14, 48, 'W')
-    # oversized grey hoodie
-    sr(g, 7, 27, 17, 27, 'Y')
-    sr(g, 5, 28, 17, 43, 'Y')
-    sr(g, 2, 29, 5, 40, 'Y')
-    sr(g, 2, 41, 5, 43, 'y')
-    sr(g, 5, 42, 17, 43, 'y')
-    sr(g, 9, 36, 9, 40, 'y')
-    sr(g, 9, 40, 17, 40, 'y')
-    sr(g, 12, 27, 17, 28, 'y')
-    sr(g, 15, 29, 15, 34, 'W')
-    sr(g, 15, 35, 15, 35, 'w')
+    # high-waist wide-leg track trousers, silver side stripe
+    sr(g, 9, 39, 17, 54, 'P')
+    sr(g, 8, 50, 17, 54, 'P')
+    sr(g, 17, 41, 17, 54, 'p')
+    sr(g, 9, 40, 9, 54, 'G')
+    sr(g, 9, 39, 17, 40, 'p')
+    # fitted cropped track jacket: shoulders, zipper, white top underneath
+    sr(g, 9, 28, 17, 28, 'P')
+    sr(g, 8, 29, 17, 39, 'P')
+    sr(g, 8, 29, 8, 39, 'p')
+    sr(g, 13, 28, 17, 31, 'W')
+    sr(g, 14, 32, 17, 33, 'W')
+    sr(g, 17, 29, 17, 39, 'e')
+    sr(g, 13, 28, 13, 31, 'p')
+    sr(g, 17, 34, 17, 34, 'G')
+    # sleeves with two silver stripes (Mars wears three)
+    sr(g, 3, 29, 8, 40, 'P')
+    sr(g, 4, 30, 4, 40, 'G')
+    sr(g, 6, 30, 6, 40, 'G')
+    sr(g, 3, 41, 8, 42, 'p')
     # hands and silver bracelets; right sleeve pushed up to show the tattoo
-    sr(g, 3, 44, 5, 46, 'S')
-    sr(g, 3, 44, 5, 44, 'e')
-    rect(g, 30, 38, 33, 43, 'S')
-    rect(g, 30, 36, 33, 37, 'y')
-    rect(g, 31, 40, 32, 42, 'R')
-    px(g, 32, 41, 'K')
-    # neck and head
+    sr(g, 4, 43, 7, 46, 'S')
+    sr(g, 4, 43, 7, 43, 'e')
+    rect(g, 28, 38, 31, 42, 'S')
+    rect(g, 27, 36, 32, 37, 'p')
+    rect(g, 29, 39, 30, 41, 'R')
+    px(g, 30, 40, 'K')
+    # neck, thin silver chain and head
     sr(g, 15, 23, 17, 26, 's')
+    sr(g, 15, 27, 17, 27, 'e')
+    px(g, 17, 29, 'e')
     disc(g, 17.5, 16, 6.7, 8.3, 'S')
-    # fringe, face-framing locks, highlights
+    # fringe, face-framing locks, highlights, a small silver hair clip
     rect(g, 10, 8, 25, 10, 'L')
     sr(g, 10, 11, 11, 21, 'L')
     sr(g, 12, 11, 12, 12, 'L')
     for (x, y) in ((14, 9), (15, 8), (21, 9), (12, 9)):
         px(g, x, y, 'l')
+    px(g, 11, 10, 'e')
     # eyes: heavy brows, green iris
     brow_y = 10 if expr == 'surprised' else 11
     sr(g, 12, brow_y, 15, brow_y, 'K')
@@ -338,9 +343,9 @@ def build_girl(expr):
         sr(g, 16, 21, 17, 22, 'K')
     else:
         sr(g, 16, 21, 17, 21, 'Z')
-    # long hair in front of the shoulders
-    sr(g, 8, 24, 11, 38, 'L')
-    sr(g, 9, 36, 10, 41, 'L')
+    # long hair in front of the shoulders, kept short enough to show the jacket
+    sr(g, 8, 24, 10, 35, 'L')
+    sr(g, 9, 33, 10, 37, 'L')
     sr(g, 8, 28, 8, 31, 'l')
     return g
 

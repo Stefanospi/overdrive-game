@@ -181,8 +181,10 @@ export class Boot extends Phaser.Scene {
           this.tweens.add({ targets: mars, y: wy + wh + px(40), duration: 180, ease: 'Back.Out' });
           this.time.delayedCall(1300, () => {
             this.cameras.main.fadeOut(250);
+            // first launch: measure the latency before the story, so the very first level is in time
+            const story = { scene: 'Story', data: { id: 'intro', next: { scene: 'Play', data: { level: FIRST_LEVEL } } } };
             this.time.delayedCall(260, () =>
-              this.scene.start('Story', { id: 'intro', next: { scene: 'Play', data: { level: FIRST_LEVEL } } }),
+              settings.get('calibrated', false) ? this.scene.start(story.scene, story.data) : this.scene.start('Calibrate', { next: story }),
             );
           });
         },

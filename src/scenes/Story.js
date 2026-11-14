@@ -5,11 +5,14 @@ import { drawBackdrop, drawLabelStrip } from '../ui.js';
 import { attachFx } from '../fx.js';
 import { TEXTS } from '../texts.js';
 import { LEVELS, FIRST_LEVEL } from '../levels.js';
-import { getCtx, preload } from '../audio.js';
+import { getCtx, preload, blip, typeClick, sfx } from '../audio.js';
+import { StoryScene } from '../storyScenes.js';
 
 // Cutscene: one chapter of TEXTS.story, a panel per tap. Started with
 //   { id: <chapter key>, next: { scene, data } }   where `next` runs when it ends.
 const BOX_H = 150; // dialogue box height
+// Typing sound per speaker: [pitch Hz, waveform]. Anyone else (decree, narration) gets a typewriter click.
+const VOICES = { mars: [330, 'square'], ministro: [110, 'sawtooth'], girl: [560, 'triangle'], quiete: [920, 'square'] };
 const STAGE_COLORS = { mars: COLORS.red, ministro: COLORS.silver, decree: COLORS.paper, girl: COLORS.red, quiete: COLORS.silver };
 
 export class Story extends Phaser.Scene {
@@ -55,9 +58,13 @@ export class Story extends Phaser.Scene {
     // stage: rays behind the speaker, speaker (or the decree) on top
     this.stageY = px(LH - BOX_H - 46); // where the speaker's feet are
     this.stageG = this.add.graphics().setDepth(-5);
+    this.sceneG = this.add.graphics().setDepth(-4);
+    this.sceneRect = { y0: px(96), h: px(LH - BOX_H - 34 - 96) };
+    this.picture = null;
     const room = LH - BOX_H - 46 - 96;
     this.actorScale = K * Phaser.Math.Clamp(Math.floor(room / 58), 3, 7);
     this.actor = this.add.image(W / 2, this.stageY, 'mars-neutral').setOrigin(0.5, 1).setScale(this.actorScale).setDepth(2);
+    this.actorScaleSmall = K * Math.max(2, Math.floor((this.actorScale / K) * 0.6));
     this.paper = this.buildDecree().setVisible(false);
     this.paperY = this.paper.y;
 
@@ -134,36 +141,58 @@ export class Story extends Phaser.Scene {
     const p = panels[this.index];
     this.dots.setText(`${this.index + 1}/${panels.length}`);
 
+    // picture behind the speaker (a drawn scene), if the panel has one
+    if (p.scene) {
+      if (!this.picture || this.picture.kind !== p.scene) {
+        if (this.picture) this.picture.destroy();
+        this.picture = new StoryScene(this, p.scene, this.sceneRect);
+        this.glitch = 0.9;
+      }
+    } else if (this.picture) {
+      this.picture.destroy();
+      this.picture = null;
+      this.sceneG.clear();
+    }
+    if (p.sfx) sfx(p.sfx);
+    if (p.shake) this.cameras.main.shake(p.shake, 0.012);
+
     // speaker
+    const hasActor = !!p.who && p.who !== 'decree';
     const changed = p.who !== this.who;
-    this.who = p.who;
+    this.who = p.who || 'narr';
     const isPaper = p.who === 'decree';
-    this.actor.setVisible(!isPaper);
+    this.actor.setVisible(hasActor);
     this.paper.setVisible(isPaper);
-    if (!isPaper) this.actor.setTexture(`${p.who}-${p.expr}`);
+    if (hasActor) this.actor.setTexture(`${p.who}-${p.expr}`);
     const target = isPaper ? this.paper : this.actor;
+    const baseScale = p.scene ? this.actorScaleSmall : this.actorScale;
     this.tweens.killTweensOf(target);
     const home = isPaper ? this.paperY : this.stageY;
-    target.setScale(isPaper ? 1 : this.actorScale).setAlpha(1).setY(home);
-    if (changed) {
-      target.y = home + px(40);
-      target.setAlpha(0);
-      this.tweens.add({ targets: target, y: home, alpha: 1, duration: 180, ease: 'Back.Out' });
-      this.glitch = 0.7;
-    } else {
-      this.tweens.add({ targets: target, scaleY: target.scaleY * 1.04, duration: 70, yoyo: true });
+    target.setScale(isPaper ? 1 : baseScale).setAlpha(1).setY(home);
+    if (hasActor || isPaper) {
+      if (changed) {
+        target.y = home + px(40);
+        target.setAlpha(0);
+        this.tweens.add({ targets: target, y: home, alpha: 1, duration: 180, ease: 'Back.Out' });
+        this.glitch = 0.7;
+      } else {
+        this.tweens.add({ targets: target, scaleY: target.scaleY * 1.04, duration: 70, yoyo: true });
+      }
     }
     const loud = p.expr === 'angry' || p.expr === 'shout';
     if (loud) this.cameras.main.shake(160, p.expr === 'shout' ? 0.01 : 0.006);
     if (navigator.vibrate && loud) navigator.vibrate(15);
 
-    // name tag
-    const name = TEXTS.names[p.who];
-    this.tag.setText(name);
-    const tagColor = p.who === 'mars' ? COLORS.redDark : COLORS.ink;
+    // name tag: the speaker, or the place and time for narration
+    const name = p.who ? TEXTS.names[p.who] : p.caption || '';
+    this.tag.setText(name).setVisible(!!name);
     this.tagG.clear();
-    this.tagG.fillStyle(tagColor, 1).fillRect(px(18), this.tagY - px(20), this.tag.width + px(16), px(22));
-    this.tagG.lineStyle(px(2), 0x000000, 1).strokeRect(px(18), this.tagY - px(20), this.tag.width + px(16), px(22));
+    if (name) {
+      const tagColor = p.who === 'mars' ? COLORS.redDark : COLORS.ink;
+      this.tagG.fillStyle(tagColor, 1).fillRect(px(18), this.tagY - px(20), this.tag.width + px(16), px(22));
+      this.tagG.lineStyle(px(2), 0x000000, 1).strokeRect(px(18), this.tagY - px(20), this.tag.width + px(16), px(22));
+    }
+    this.voice = VOICES[p.who] || null;
 
     // text, typed
     this.full = this.body.getWrappedText(p.text).join('\n');
@@ -177,6 +206,11 @@ export class Story extends Phaser.Scene {
       callback: () => {
         n++;
         this.body.setText(this.full.slice(0, n));
+        const ch = this.full[n - 1];
+        if (ch && ch.trim() && n % 2 === 0) {
+          if (this.voice) blip(this.voice[0], this.voice[1]);
+          else typeClick();
+        }
         if (n >= this.full.length) this.more.setVisible(true);
       },
     });
@@ -194,6 +228,7 @@ export class Story extends Phaser.Scene {
   update(time, delta) {
     this.glitch = Math.max(0, this.glitch - delta / 400);
     this.spin += delta * (this.who === 'ministro' || this.who === 'quiete' ? 0 : 0.00012);
+    if (this.picture) this.picture.update(this.sceneG, delta / 1000);
     if (this.fx) {
       this.fx.glitch = this.glitch;
       this.fx.ab = 0.3 + this.glitch * 1.4;
@@ -205,6 +240,7 @@ export class Story extends Phaser.Scene {
     // backdrop of the stage: slow sunburst for Mars, rigid bars for the Minister
     const g = this.stageG;
     g.clear();
+    if (this.picture) return; // a drawn scene replaces the sunburst
     const cx = W / 2;
     const cy = this.stageY - px(150);
     const color = STAGE_COLORS[this.who] || COLORS.red;

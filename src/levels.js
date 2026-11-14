@@ -72,6 +72,7 @@ export const LEVELS = {
     lanes: 3,
     approach: 3,
     synth: false,
+    giftBeat: 44, // beat where the helper offers her free BONUS ROOT
     track: {
       url: brazilianClip,
       lead: brazilianTiming.lead, // seconds of clip before bar 1: the fade-in
