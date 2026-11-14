@@ -1,19 +1,36 @@
-// Tiny Web Audio synth: a placeholder beat so the game is playable before the
-// real tracks are plugged in. Everything is scheduled on the audio clock, which
-// is also the game's master clock (see scenes/Dub.js).
+// Tiny Web Audio synth: a placeholder soundsystem so the game is playable
+// before the real tracks are plugged in. Every sound takes an absolute time on
+// the audio clock, which is also the game's master clock (see scenes/Play.js).
 
 let ctx = null;
 let master = null;
 let noise = null;
+let analyser = null;
+let echoIn = null;
+let echoDelay = null;
+let freq = null;
+const bands = new Float32Array(6);
+const BAND_EDGES = [0, 2, 5, 12, 30, 70, 160];
 
 export function getCtx() {
   if (!ctx) {
     const AC = window.AudioContext || window.webkitAudioContext;
     ctx = new AC();
+    // Freezing the audio clock when the tab is hidden pauses the whole game.
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) ctx.suspend();
+      else ctx.resume();
+    });
   }
-  if (ctx.state === 'suspended') ctx.resume();
+  if (ctx.state === 'suspended' && !document.hidden) ctx.resume();
   return ctx;
 }
+
+// Read-only clock: never resumes the context, safe to call every frame.
+export const clock = () => (ctx ? ctx.currentTime : 0);
+
+// How long a scheduled sound takes to reach the ears, in seconds.
+export const latency = () => (ctx ? ctx.outputLatency || ctx.baseLatency || 0 : 0);
 
 function out() {
   const c = getCtx();
@@ -23,11 +40,129 @@ function out() {
     const comp = c.createDynamicsCompressor();
     master.connect(comp);
     comp.connect(c.destination);
+
+    analyser = c.createAnalyser();
+    analyser.fftSize = 512;
+    analyser.smoothingTimeConstant = 0.6;
+    master.connect(analyser);
+    freq = new Uint8Array(analyser.frequencyBinCount);
+
+    // dub echo: filtered feedback delay
+    echoIn = c.createGain();
+    echoIn.gain.value = 0.5;
+    echoDelay = c.createDelay(1.5);
+    echoDelay.delayTime.value = 0.32;
+    const lp = c.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 2200;
+    const hp = c.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.value = 320;
+    const fb = c.createGain();
+    fb.gain.value = 0.46;
+    echoIn.connect(echoDelay);
+    echoDelay.connect(lp);
+    lp.connect(hp);
+    hp.connect(fb);
+    fb.connect(echoDelay);
+    hp.connect(master);
+
     noise = c.createBuffer(1, c.sampleRate, c.sampleRate);
     const d = noise.getChannelData(0);
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
   }
   return master;
+}
+
+export function setEcho(seconds) {
+  out();
+  echoDelay.delayTime.value = seconds;
+}
+
+// Six frequency bands, 0..1, low to high. Reuses one array: do not keep it.
+export function levels() {
+  if (!analyser) return bands;
+  analyser.getByteFrequencyData(freq);
+  for (let b = 0; b < 6; b++) {
+    let sum = 0;
+    for (let i = BAND_EDGES[b]; i < BAND_EDGES[b + 1]; i++) sum += freq[i];
+    bands[b] = sum / ((BAND_EDGES[b + 1] - BAND_EDGES[b]) * 255);
+  }
+  return bands;
+}
+
+// ---- real tracks ---------------------------------------------------------------
+const files = new Map(); // url -> Promise<ArrayBuffer>
+const buffers = new Map(); // url -> Promise<AudioBuffer>
+
+// Starts the download. Needs no audio context, so it can run before the first tap.
+export function preload(url) {
+  if (!files.has(url)) files.set(url, fetch(url).then((r) => r.arrayBuffer()));
+  return files.get(url);
+}
+
+export function loadTrack(url) {
+  if (!buffers.has(url)) {
+    buffers.set(
+      url,
+      preload(url).then((data) => new Promise((ok, fail) => getCtx().decodeAudioData(data.slice(0), ok, fail))),
+    );
+  }
+  return buffers.get(url);
+}
+
+// Plays a clip starting at audio-clock time `when`, from `offset` seconds into it.
+// Fade times are positions inside the clip. The track skips the synth's
+// compressor so the master is heard as it was made.
+export function playTrack(buffer, when, offset = 0, { fadeIn = 0, fadeOutAt = Infinity, fadeOut = 1, gain = 0.9 } = {}) {
+  const c = getCtx();
+  out();
+  const src = c.createBufferSource();
+  const f = c.createBiquadFilter();
+  const g = c.createGain();
+  src.buffer = buffer;
+  f.type = 'lowpass';
+  f.frequency.value = 20000;
+  src.connect(f);
+  f.connect(g);
+  g.connect(c.destination);
+  g.connect(analyser);
+
+  const zero = when - offset; // audio-clock time of the clip's first sample
+  if (offset < fadeIn) {
+    g.gain.setValueAtTime(gain * (offset / fadeIn) ** 2, when);
+    // a curve, not a line: loudness is not linear, a straight ramp sounds abrupt
+    const steps = 24;
+    for (let i = 1; i <= steps; i++) {
+      const p = offset / fadeIn + (1 - offset / fadeIn) * (i / steps);
+      g.gain.linearRampToValueAtTime(gain * p * p, zero + fadeIn * p);
+    }
+  } else {
+    g.gain.setValueAtTime(gain, when);
+  }
+  if (fadeOutAt < buffer.duration) {
+    g.gain.setValueAtTime(gain, Math.max(when, zero + fadeOutAt));
+    g.gain.linearRampToValueAtTime(0.0001, zero + fadeOutAt + fadeOut);
+  }
+  src.start(when, offset);
+
+  return {
+    stop() {
+      try {
+        src.stop();
+      } catch (e) {
+        /* already stopped */
+      }
+      g.disconnect();
+    },
+    // a missed note dunks the track under water for a moment
+    muffle() {
+      const t = c.currentTime;
+      f.frequency.cancelScheduledValues(t);
+      f.frequency.setValueAtTime(600, t);
+      f.frequency.exponentialRampToValueAtTime(20000, t + 0.45);
+    },
+  };
 }
 
 function noiseSource(loop = false) {
@@ -70,7 +205,7 @@ export function hat(t, gain = 0.14) {
   s.stop(t + 0.06);
 }
 
-export function clap(t) {
+export function clap(t, gain = 0.45) {
   const c = getCtx();
   const s = noiseSource();
   const f = c.createBiquadFilter();
@@ -80,16 +215,102 @@ export function clap(t) {
   f.Q.value = 1.2;
   g.gain.setValueAtTime(0.0001, t);
   [0, 0.012, 0.024].forEach((o) => {
-    g.gain.setValueAtTime(0.45, t + o);
+    g.gain.setValueAtTime(gain, t + o);
     g.gain.exponentialRampToValueAtTime(0.05, t + o + 0.01);
   });
-  g.gain.setValueAtTime(0.4, t + 0.036);
+  g.gain.setValueAtTime(gain * 0.9, t + 0.036);
   g.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
   s.connect(f);
   f.connect(g);
   g.connect(out());
   s.start(t);
   s.stop(t + 0.25);
+}
+
+// Halftime snare: clap plus a short tonal body, with a touch of echo.
+export function snare(t, gain = 1) {
+  const c = getCtx();
+  clap(t, 0.45 * gain);
+  const o = c.createOscillator();
+  const g = c.createGain();
+  o.type = 'triangle';
+  o.frequency.setValueAtTime(230, t);
+  o.frequency.exponentialRampToValueAtTime(150, t + 0.1);
+  g.gain.setValueAtTime(0.5 * gain, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
+  o.connect(g);
+  g.connect(out());
+  g.connect(echoIn);
+  o.start(t);
+  o.stop(t + 0.16);
+}
+
+// Offbeat dub chord stab, fed into the echo.
+export function skank(t, chord, gain = 0.2) {
+  const c = getCtx();
+  out();
+  const f = c.createBiquadFilter();
+  const g = c.createGain();
+  f.type = 'bandpass';
+  f.frequency.value = 1100;
+  f.Q.value = 0.9;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(gain, t + 0.005);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
+  chord.forEach((hz) => {
+    const o = c.createOscillator();
+    o.type = 'sawtooth';
+    o.frequency.value = hz * 2;
+    o.connect(f);
+    o.start(t);
+    o.stop(t + 0.2);
+  });
+  f.connect(g);
+  g.connect(master);
+  g.connect(echoIn);
+}
+
+// Dub siren: wobbling square wave falling in pitch, drowned in echo.
+export function siren(t, dur = 0.8) {
+  const c = getCtx();
+  out();
+  const o = c.createOscillator();
+  const lfo = c.createOscillator();
+  const depth = c.createGain();
+  const g = c.createGain();
+  o.type = 'square';
+  o.frequency.setValueAtTime(1100, t);
+  o.frequency.exponentialRampToValueAtTime(520, t + dur);
+  lfo.frequency.value = 9;
+  depth.gain.value = 220;
+  lfo.connect(depth);
+  depth.connect(o.frequency);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(0.06, t + 0.02);
+  g.gain.setValueAtTime(0.06, t + dur - 0.05);
+  g.gain.linearRampToValueAtTime(0.0001, t + dur);
+  o.connect(g);
+  g.connect(master);
+  g.connect(echoIn);
+  o.start(t);
+  lfo.start(t);
+  o.stop(t + dur + 0.02);
+  lfo.stop(t + dur + 0.02);
+}
+
+// Count-in blip.
+export function tick(t, hz = 1200) {
+  const c = getCtx();
+  const o = c.createOscillator();
+  const g = c.createGain();
+  o.type = 'square';
+  o.frequency.value = hz;
+  g.gain.setValueAtTime(0.09, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
+  o.connect(g);
+  g.connect(out());
+  o.start(t);
+  o.stop(t + 0.07);
 }
 
 export function riser(t, dur) {
@@ -140,42 +361,54 @@ export function dropHit(t) {
   o.stop(t + 1.05);
 }
 
-// One 8-beat build-up ending with the drop at t0 + 8 beats.
-export function scheduleCycle(t0, beat) {
-  for (let i = 0; i < 8; i++) {
-    const t = t0 + i * beat;
-    if (i % 2 === 0 && i < 6) kick(t, 0.9);
-    if (i === 1 || i === 5) clap(t);
-    if (i < 6) {
-      hat(t + beat / 2, 0.14);
-      if (i >= 1) hat(t, 0.07);
-    }
-  }
-  riser(t0 + 4 * beat, 4 * beat);
-  dropHit(t0 + 8 * beat);
-}
-
-// Sub-bass that you "play" by holding the screen; pitch follows ring progress.
-export function startSub() {
+// The bassline is played by the player: it sounds only while a hold note is
+// held. Sub sine plus a wobbling filtered saw so it also reads on phone speakers.
+export function startSub(hz, wobbleHz = 4.67) {
   const c = getCtx();
-  const o = c.createOscillator();
+  const t = c.currentTime;
   const g = c.createGain();
-  o.type = 'sine';
-  o.frequency.value = 48;
   g.gain.value = 0;
-  g.gain.setTargetAtTime(0.55, c.currentTime, 0.03);
-  o.connect(g);
+  g.gain.setTargetAtTime(1, t, 0.02);
+
+  const sub = c.createOscillator();
+  const subG = c.createGain();
+  sub.type = 'sine';
+  sub.frequency.value = hz / 2;
+  subG.gain.value = 0.5;
+  sub.connect(subG);
+  subG.connect(g);
+
+  const saw = c.createOscillator();
+  const f = c.createBiquadFilter();
+  const sawG = c.createGain();
+  const lfo = c.createOscillator();
+  const depth = c.createGain();
+  saw.type = 'sawtooth';
+  saw.frequency.value = hz;
+  f.type = 'lowpass';
+  f.frequency.value = 520;
+  f.Q.value = 7;
+  lfo.frequency.value = wobbleHz;
+  depth.gain.value = 380;
+  lfo.connect(depth);
+  depth.connect(f.frequency);
+  sawG.gain.value = 0.3;
+  saw.connect(f);
+  f.connect(sawG);
+  sawG.connect(g);
+
   g.connect(out());
-  o.start();
+  sub.start();
+  saw.start();
+  lfo.start();
   return {
-    setPitch(p) {
-      o.frequency.setTargetAtTime(48 + p * 44, c.currentTime, 0.03);
-    },
     stop() {
-      const t = c.currentTime;
-      g.gain.cancelScheduledValues(t);
-      g.gain.setTargetAtTime(0, t, 0.02);
-      o.stop(t + 0.15);
+      const now = c.currentTime;
+      g.gain.cancelScheduledValues(now);
+      g.gain.setTargetAtTime(0, now, 0.025);
+      sub.stop(now + 0.2);
+      saw.stop(now + 0.2);
+      lfo.stop(now + 0.2);
     },
   };
 }

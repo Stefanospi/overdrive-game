@@ -3,3 +3,7 @@ dist/
 .DS_Store
 __pycache__/
 *.log
+
+# Full, unreleased tracks stay local. Only the clips cut by tools/analyze_track.py are published.
+src/music/*
+!src/music/*.clip.mp3

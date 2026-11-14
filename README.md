@@ -1,9 +1,9 @@
 # OVERDRIVE.EXE
 
 Gioco web mobile (verticale) per promuovere l'EP **Overdrive** di Stephen Mars.
-Una serie di microgiochi, uno per traccia, guidati da **MARS.EXE**: un antivirus che a un certo punto si scopre essere il virus.
+Un rhythm game a corsie, un livello per traccia. Il Ministro ha vietato il basso, il ballo e le riunioni; Mars trasmette da una radio pirata, nascosto nel sistema del Ministero sotto le spoglie dell'antivirus **MARS.EXE**, e riaccende un quartiere per ogni traccia.
 
-Stack: [Phaser 3](https://phaser.io) + [Vite](https://vitejs.dev), JavaScript puro, nessun asset binario (gli sprite sono generati da codice).
+Stack: [Phaser 3](https://phaser.io) + [Vite](https://vitejs.dev), JavaScript puro. Sprite e sfondi sono generati da codice; l'unico asset è la clip audio di ogni livello.
 
 ## Avvio
 
@@ -14,63 +14,122 @@ npm run build     # build di produzione in dist/
 npm run preview   # prova la build
 ```
 
-Su desktop si gioca con mouse o **barra spaziatrice**. Su telefono: tieni premuto lo schermo.
+Serve Node 20.19 o superiore.
+
+## Come si gioca
+
+Le note escono dal soundsystem e scendono lungo tre corsie. Tocca la corsia quando la nota arriva sulla linea.
+
+- **Telefono:** lo schermo è diviso in tre fasce verticali, una per corsia. Multi-touch attivo.
+- **Desktop:** `A S D`, `J K L` oppure le frecce sinistra, giù, destra.
+- **Note lunghe:** tieni premuto fino alla fine.
+- Un errore "affoga" la traccia per un attimo (filtro passa-basso).
+- **iPhone a schermo pieno:** Condividi > Aggiungi alla schermata Home. Aperto da lì il gioco non ha le barre di Safari.
+
+| Scarto | Esito | Punti | Overdrive |
+|---|---|---|---|
+| fino a 55 ms | PERFETTO | 300 | +2,4 |
+| fino a 100 ms | BUONO | 200 | +1,5 |
+| fino a 150 ms | OK | 100 | +0,6 |
+| oltre | MANCATO | 0 | -5 |
+
+La combo alza il moltiplicatore (x2 a 10, x3 a 20, x4 a 30). Sopra il 60% di Overdrive ("limite legale") MARS.EXE comincia a glitchare. Al 100% parte la **modalità Overdrive**: 16 battiti a colori invertiti e punti doppi, poi la barra torna al 55%.
+
+I valori sono in cima a `src/scenes/Play.js` (`GRADES`, `MISS_OD`, `OD_MODE_BEATS`).
 
 ## Com'è fatto
 
 ```
 src/
   main.js          avvio Phaser (attende i font pixel)
-  config.js        dimensioni, colori, font. Usa sempre px(n) per le misure
-  texts.js         TUTTE le battute di MARS.EXE (modificabili senza toccare il codice)
-  audio.js         mini sintetizzatore Web Audio: beat provvisorio + sub che suoni tenendo premuto
-  ui.js            sfondo, scanline, finestre Y2K, bolla di dialogo
-  sprites.js       GENERATO: i 4 sprite di MARS.EXE (neutral, glitch, surprised, win)
+  config.js        dimensioni (adattive), colori, font, parametri di debug. Usa sempre px(n)
+  texts.js         TUTTO il testo a schermo: storia, battute, etichette, verbale
+  levels.js        i livelli: traccia, BPM, sezioni e pattern delle note
+  rank.js          precisione e fascia di risultato (decide finale della storia e timbro)
+  audio.js         riproduzione delle clip (fade, filtro) e sintetizzatore Web Audio
+  fx.js            shader a tutto schermo (CRT, aberrazione, glitch, grana, inversione)
+  ui.js            sfondo a retino, finestre Y2K, bolla di dialogo, scritte giganti
+  sprites.js       GENERATO: Mars in 7 espressioni, il Ministro in 2
+  charts/          GENERATO: tempi della clip e bozza delle note, una per traccia
+  music/           le clip pubblicate (*.clip.mp3). Le tracce intere restano fuori da git
   scenes/
     Boot.js        schermata iniziale (il tocco sblocca l'audio)
-    Dub.js         microgioco 1: tieni premuto, rilascia sul drop
-    End.js         risultato
+    Story.js       la storia a pannelli, prima e dopo il livello
+    Play.js        il gioco: autostrada, note, punteggio, HUD
+    End.js         risultato: il verbale del Ministero del Basso
 tools/
-  make_sprites.py  rigenera src/sprites.js (npm run sprites)
+  make_sprites.py    rigenera src/sprites.js (npm run sprites)
+  analyze_track.py   taglia la clip e misura la griglia (npm run track)
 ```
 
-## Microgioco 1: DUB
+Lo schermo: la larghezza logica è sempre 390, l'altezza logica (`LH`) si calcola all'avvio sulle proporzioni del telefono, così il gioco lo riempie tutto. La risoluzione segue la densità dello schermo fino a 3x.
 
-Un anello si chiude sul bersaglio rosso nell'arco di 8 battute a 140 BPM. Tieni premuto (il sub sale di tono) e **rilascia esattamente sul drop**.
+Il clock di gioco è quello dell'audio (`AudioContext.currentTime`), corretto con la latenza di uscita dichiarata dal browser. Quando la scheda va in secondo piano l'audio si sospende e il gioco si ferma con lui.
 
-| Scarto dal drop | Esito | Overdrive |
-|---|---|---|
-| fino a 70 ms | PERFETTO | +22 |
-| fino a 140 ms | BUONO | +14 |
-| fino a 250 ms | OK | +7 |
-| oltre | TROPPO PRESTO / TARDI / MANCATO | -12 |
+## Scrivere un livello
 
-Il clock di gioco è quello dell'audio (`AudioContext.currentTime`), così ritmo e input restano sincronizzati. Con l'overdrive sopra il 60% MARS.EXE passa all'espressione glitch.
+Un livello in `src/levels.js` è una lista di battute. Ogni battuta ha una sezione (`intro`, `groove`, `break`, `build`, `drop`, `end`) e un pattern: una stringa di 16 passi per corsia.
 
-Parametri in cima a `src/scenes/Dub.js` (`BPM`, `ROUNDS`, finestre di tolleranza in `GRADES`).
+```js
+a: ['x.........x.....', '........x.......', '....h--.....h---'],
+//   corsia 0           corsia 1            corsia 2
+```
 
-## Come inserire le tracce vere
+`x` è una nota, `h` l'inizio di una nota lunga, `-` la sua continuazione, `.` il vuoto.
 
-Oggi il beat è sintetico (`audio.js`). Per usare uno snippet dell'EP:
-1. Metti l'mp3/ogg in `public/audio/` (30 secondi bastano).
-2. Caricalo in Phaser (`this.load.audio` in una scena di preload) oppure con `fetch` + `decodeAudioData` e fallo partire in `Dub.create()` al posto di `A.scheduleCycle(...)`.
-3. Allinea `BPM`, `CYCLE` e la posizione del drop a quelli della traccia.
+Un livello senza `track` genera la musica dalle note stesse (è il caso del livello dimostrativo `?level=dub`).
+
+## Aggiungere una traccia
+
+1. Metti il file intero in `src/music/`. Resta sul tuo computer: `.gitignore` lo esclude.
+2. In `tools/analyze_track.py` aggiungi la configurazione: BPM, secondi di inizio e fine, quante battute prima e dopo il drop.
+3. `npm run track` (serve `pip install librosa soundfile`). Scrive:
+   - `src/music/<id>.clip.mp3`: solo il pezzo che il gioco suona;
+   - `src/charts/<id>.js`: i tempi della clip e una bozza di dove cadono i colpi.
+4. In `src/levels.js` aggiungi il livello con `track` e `synth: false`, e scrivi i pattern a mano guardando la bozza e ascoltando.
+
+La clip parte in fade in durante le battute senza note e chiude in fade out (`fadeIn`, `fadeOut` nel livello).
+
+## Scrivere la storia
+
+In `src/texts.js`, `TEXTS.story`. Un capitolo è una lista di pannelli:
+
+```js
+{ who: 'mars', expr: 'angry', text: 'Non erano favori. Erano diritti.' }
+```
+
+`who` è `mars`, `ministro` o `decree`. Espressioni di Mars: `neutral`, `sad`, `angry`, `shout`, `win`, `surprised`, `glitch`. Del Ministro: `calm`, `angry`. Dopo un livello parte il capitolo `<idLivello>_high`, `_mid` o `_low` secondo il risultato.
+
+## Debug
+
+Parametri nell'URL, combinabili:
+
+| Parametro | Effetto |
+|---|---|
+| `?scene=play` / `end` / `story` | salta alla scena (su un browser normale l'audio parte solo dopo un tocco) |
+| `?level=dub` | sceglie il livello per `?scene=play` |
+| `?story=brazilian_high` | sceglie il capitolo per `?scene=story` |
+| `?auto` | un bot suona tutte le note |
+| `?seek=64` | parte dal battito indicato |
+| `?offset=30` | compensazione extra della latenza, in ms |
+
+Il gioco è esposto come `window.__overdrive`.
 
 ## Sprite di MARS.EXE
 
-I personaggi sono definiti in `tools/make_sprites.py` (funzione `build()`): capelli, occhiali, outfit, espressioni. Dopo le modifiche:
+I personaggi sono definiti in `tools/make_sprites.py`: `build()` per Mars, `build_minister()` per il Ministro. Dopo le modifiche:
 
 ```bash
-npm run sprites   # richiede python3
+npm run sprites   # richiede python
 ```
 
 ## Da fare
 
-- microgiochi per le altre tracce (jungle, DNB, techno, ...)
-- tracce vere al posto del beat sintetico
+- rivedere a orecchio le note di BRAZILIAN DUB
+- prova di latenza su telefono e schermata di calibrazione
+- capitoli e livelli per le altre tracce, hub tra i livelli
 - card condivisibile 9:16 a fine partita
 - link a Spotify/Bandcamp quando l'EP esce
-- calibrazione della latenza audio per i telefoni più lenti
 
 ## Deploy
 
