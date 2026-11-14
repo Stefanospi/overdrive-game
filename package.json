@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview --host",
     "sprites": "python tools/make_sprites.py",
-    "track": "python tools/analyze_track.py"
+    "track": "python tools/analyze_track.py",
+    "check:story": "node tools/check_story.mjs"
   },
   "dependencies": {
     "phaser": "^3.90.0"

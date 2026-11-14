@@ -50,3 +50,11 @@ Idee di variante per le altre tracce, sempre sullo stesso motore: JUNGLE raffich
 - Il clock di gioco è `AudioContext.currentTime`: ogni logica di ritmo si aggancia a quello, non a `Date.now()` o ai frame.
 - Il gioco è esposto come `window.__overdrive` per il debug da console. Parametri URL di debug: `?scene=play|end|story`, `?level=<id>`, `?story=<id>`, `?auto`, `?seek=<battiti>`, `?offset=<ms>`.
 - Comandi: `npm run dev`, `npm run build`, `npm run preview`.
+
+## Regole dei testi della storia (verificate da `npm run check:story`)
+
+- Max 8 parole per pannello, una battuta per pannello; parole giganti in partita max 2.
+- Etichette ammesse: MARS, ADRIANA.EXE, GABRIEL.EXE, IL MINISTRO, QUIETE.SYS (più DECRETO N.140).
+- Voci: Mars frasi secche; Adriana rapporti di stato; Gabriel sicurezza burocratica (timbri, moduli); il Ministro decreti numerati e cortesia d'ufficio; QUIETE.SYS gentilezza da sportello. Errori di sistema: "Errore NNN: ...". Il decreto falso di Gabriel è il N.139, retrodatato (mai 141).
+- Finali `<livello>_high|mid|low`: 6-8 / 4-5 / 4 pannelli, chiusi da uno stato da 3 parole senza personaggio ("Quartiere 1 acceso."). Nel boss lo stato sta prima dell'ultima battuta di Mars (link all'EP). I tre finali sono solo varianti di battute: la storia dopo è unica.
+- Capitolo 3 = livello `server` (traccia TOP ONE, 147 BPM, clip dal primo drop a ~1:25, 22 battute). Fasi in `levels.js`: CENSURA (battute 1-6), DECRETO (7-12, ID FALSA), ROOT (13-19, REWIND automatico = reset del contatore errori), outro (20-22). **Mappa note vuota (la scrive Stefano)**; nel ROADMAP `server` ha ancora `id: null` finché la mappa non c'è. TODO: barre di censura sulle corsie, decreti come note speciali, root forzato al 100% in fase 3, schermata payload (barra OVERDRIVE.EXP + ESEGUI). Grafica dipende dalla copertina di Gabriel.

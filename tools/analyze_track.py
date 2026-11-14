@@ -50,6 +50,19 @@ TRACKS = {
         'bars_after_drop': 22,
         'lead_bars': 2,
     },
+    # TOP ONE (speed house / UK groove, boss of chapter 3): the clip starts on the first
+    # drop, which lands near 1:25 (84.9 s, measured on the sub-bass), and runs 22 bars
+    'top-one': {
+        'id': 'top-one',
+        'source': 'src/music/TOP ONE MASTER V3.wav',
+        'bpm': 147.0,
+        'from': 84.0,
+        'to': 125.0,
+        'drop_search': (84.5, 85.5),
+        'bars_before_drop': 0,
+        'bars_after_drop': 22,
+        'lead_bars': 0,
+    },
 }
 TRACK = TRACKS['brazilian-dub']
 
