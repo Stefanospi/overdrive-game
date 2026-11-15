@@ -221,7 +221,8 @@ def build(expr):
 def build_minister(expr):
     """The villain: a filthy-rich dandy. Top hat, black tailcoat, white gloves, gold buttons,
     watch chain and cane, a cigar, and a censorship bar where the eyes should be.
-    Battle poses (boss fight): 'attack' raises the cane, 'hurt' loses the top hat."""
+    Battle poses (boss fight): 'attack' raises the cane, 'hurt' loses the top hat,
+    'broken' (half health gone) has the censorship bar in error and the cane snapped."""
     g = new()
     # trousers and patent shoes
     sr(g, 10, 44, 17, 52, 'P')
@@ -263,6 +264,13 @@ def build_minister(expr):
         rect(g, 30, 2, 31, 3, 'g')
         rect(g, 30, 4, 30, 17, 'B')
         rect(g, 31, 2, 31, 17, 'q')
+    elif expr == 'broken':
+        # the cane snapped: the lower half lies on the floor
+        rect(g, 30, 40, 31, 41, 'g')
+        rect(g, 30, 42, 30, 47, 'B')
+        rect(g, 31, 40, 31, 47, 'q')
+        rect(g, 32, 54, 35, 54, 'B')
+        rect(g, 32, 55, 35, 55, 'q')
     else:
         # gold-topped cane in the right hand
         rect(g, 30, 40, 31, 41, 'g')
@@ -295,7 +303,7 @@ def build_minister(expr):
         for x in range(6, 18):
             off = (x - 6) // 4
             for y in range(10 + off, 15 + off):
-                spx(g, x, y, 'X')
+                spx(g, x, y, 'R' if expr == 'broken' and (x + y) % 3 else 'X')
         sr(g, 14, 20, 17, 22, 'K')
         sr(g, 13, 22, 13, 23, 'K')
         sr(g, 16, 22, 17, 22, 'R')
@@ -481,7 +489,8 @@ def build_grafico(expr):
 def build_quiete(expr):
     """The Ministry's servile guard (QUIETE.SYS): navy uniform, peaked cap with a badge,
     mirrored shades, baton, and a smile that never changes.
-    Battle poses (boss fight): 'attack' raises the baton, 'hurt' cracks the shades."""
+    Battle poses (boss fight): 'attack' raises the baton, 'hurt' cracks the shades,
+    'broken' (half health gone) has lost the cap and keeps the cracked shades."""
     g = new()
     # legs and boots
     sr(g, 10, 44, 17, 52, 'F')
@@ -520,14 +529,19 @@ def build_quiete(expr):
     sr(g, 15, 25, 17, 29, 's')
     disc(g, 17.5, 17, 7.6, 9, 'S')
     sr(g, 9, 16, 10, 20, 'S')
-    # peaked cap with a badge
-    sr(g, 9, 4, 17, 10, 'F')
-    sr(g, 9, 9, 17, 9, 'Q')
-    sr(g, 6, 11, 17, 12, 'B')
-    px(g, 17, 7, 'e')
-    px(g, 18, 7, 'e')
-    px(g, 17, 6, 'g')
-    px(g, 18, 6, 'g')
+    if expr == 'broken':
+        # the cap is gone: short dark hair
+        sr(g, 10, 8, 17, 11, 'K')
+        sr(g, 12, 7, 17, 7, 'K')
+    else:
+        # peaked cap with a badge
+        sr(g, 9, 4, 17, 10, 'F')
+        sr(g, 9, 9, 17, 9, 'Q')
+        sr(g, 6, 11, 17, 12, 'B')
+        px(g, 17, 7, 'e')
+        px(g, 18, 7, 'e')
+        px(g, 17, 6, 'g')
+        px(g, 18, 6, 'g')
     # nose and shades
     sr(g, 17, 18, 17, 20, 's')
     if expr in ('smile', 'attack'):
@@ -544,11 +558,31 @@ def build_quiete(expr):
             spx(g, 13 - i, 14 + i, 'K')
         sr(g, 14, 22, 17, 22, 'm')
         rect(g, 8, 18, 27, 18, 'R')
-        if expr == 'hurt':
-            # mouth open, a lens cracked
-            sr(g, 14, 22, 17, 23, 'K')
+        if expr in ('hurt', 'broken'):
+            # a lens cracked
             for i in range(3):
                 px(g, 21 + i, 14 + i, 'W')
+        if expr == 'hurt':
+            sr(g, 14, 22, 17, 23, 'K')  # mouth open
+    return g
+
+
+# quiete pose, minister pose for each pose of the fusion
+FUSION = {'idle': ('error', 'angry'), 'attack': ('attack', 'attack'), 'hurt': ('hurt', 'hurt'), 'broken': ('broken', 'broken')}
+
+
+def build_fusion(expr):
+    """QUIETE.SYS and the Minister fused (boss phase 3): the guard's half on the left,
+    mirrored so that its baton is on the outside, the Minister's half on the right, and a
+    red seam down the middle."""
+    q, m = FUSION[expr]
+    a, b = build_quiete(q), build_minister(m)
+    g = new()
+    for y in range(H):
+        for x in range(W):
+            g[y][x] = a[y][W - 1 - x] if x < W // 2 else b[y][x]
+        if y % 3 != 2 and (g[y][17] or g[y][18]):
+            g[y][17 + (y // 3) % 2] = 'R'
     return g
 
 
@@ -627,9 +661,9 @@ def rects(g):
 import os
 
 MARS_EXPRESSIONS = ("neutral", "glitch", "surprised", "win", "sad", "angry", "shout")
-MINISTER_EXPRESSIONS = ("calm", "angry", "attack", "hurt")
+MINISTER_EXPRESSIONS = ("calm", "angry", "attack", "hurt", "broken")
 GIRL_EXPRESSIONS = ("neutral", "happy", "wink", "surprised")
-QUIETE_EXPRESSIONS = ("smile", "error", "attack", "hurt")
+QUIETE_EXPRESSIONS = ("smile", "error", "attack", "hurt", "broken")
 GRAFICO_EXPRESSIONS = ("neutral", "happy", "wink", "surprised")
 
 
@@ -652,6 +686,8 @@ if __name__ == "__main__":
     # knocked out (boss fight): the hurt pose, torn apart like Mars's glitch
     data["ministro-ko"] = [[x, y, w, h, c] for (x, y, w, h, c) in rects(glitch(outline(build_minister("hurt"))))]
     data["quiete-ko"] = [[x, y, w, h, c] for (x, y, w, h, c) in rects(glitch(outline(build_quiete("hurt"))))]
+    data.update({"fusion-" + e: [[x, y, w, h, c] for (x, y, w, h, c) in rects(outline(build_fusion(e)))] for e in FUSION})
+    data["fusion-ko"] = [[x, y, w, h, c] for (x, y, w, h, c) in rects(glitch(outline(build_fusion("hurt"))))]
     data.update({"girl-" + e: [[x, y, w, h, c] for (x, y, w, h, c) in rects(outline(build_girl(e)))] for e in GIRL_EXPRESSIONS})
     data.update({"grafico-" + e: [[x, y, w, h, c] for (x, y, w, h, c) in rects(outline(build_grafico(e)))] for e in GRAFICO_EXPRESSIONS})
     lines = [

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { W, px, COLORS } from './config.js';
+import { W, K, px, COLORS, FONT_PS } from './config.js';
+import { SPRITES, PALETTE, SPRITE_W, SPRITE_H } from './sprites.js';
 import { TEXTS } from './texts.js';
 import { BOSS_TUNING as T } from './bossTuning.js';
 
@@ -9,6 +10,13 @@ import { BOSS_TUNING as T } from './bossTuning.js';
 const CX = W / 2;
 const ATTACK_MS = { riff: 420, drop: 380, root: 620 };
 export const GOLD = 0xffc83a; // the stun colour (the Minister's cane)
+const IDLE = { quiete: 'quiete-smile', ministro: 'ministro-calm', fusion: 'fusion-idle' };
+const CUBES = 100; // pixel cubes: one fixed pool, nothing is allocated while playing
+const CUBE_COLORS = [COLORS.silver, COLORS.red, COLORS.paper, 0x232b4a, 0x0c0c10];
+const rnd = (i) => {
+  const x = Math.sin(i * 12.9898 + 4.1) * 43758.5453;
+  return x - Math.floor(x);
+};
 
 export class BossShow {
   constructor(scene) {
@@ -27,6 +35,7 @@ export class BossShow {
     this.stuns = T.stunsPerPhase.map(() => 0); // stuns used in each phase
     this.wasStunned = false;
     this.vis = 0; // visual clock in seconds: it stops during a freeze
+    this.buildGiant();
   }
 
   // ---- stage A: combo attacks ---------------------------------------------------
@@ -60,6 +69,7 @@ export class BossShow {
   onBreak(combo, lane) {
     this.armed.fill(true);
     if (!this.stunned()) this.guard = Math.max(0, this.guard - T.guardMiss);
+    if (!this.stunned() && this.s.boss.segs[this.s.boss.phase].hp > 0) this.atkAt = this.vis; // any miss: it swings at you
     if (combo < T.counterFrom) return;
     if (!this.stunned()) this.guard *= 1 - T.counterGuardLoss;
     this.counter.lane = lane;
@@ -114,12 +124,153 @@ export class BossShow {
     }
   }
 
-  // Where the attacks land: the middle of whoever is fighting now.
-  aim() {
+  // ---- stage C: the giant -------------------------------------------------------------
+  // The boss of the current phase stands behind the highway, as tall as the screen, and
+  // shows through it. Its state follows the health of that phase's segment: pieces go
+  // missing as it drops, below half it switches to the `broken` sprite, and at zero (or
+  // while stunned) it is on its knees. It only dies at ESEGUI (crumble).
+  buildGiant() {
     const s = this.s;
-    const live = s.fighters.filter((f) => s.level.boss.fighters[s.boss.phase].includes(f.who));
-    const x = live.reduce((sum, f) => sum + f.x, 0) / Math.max(1, live.length);
-    return { x, y: s.feetY - px(50) };
+    this.sc = K * T.giantScale; // screen px per sprite pixel
+    this.topY = px(s.stackBottom + 2);
+    this.who = s.level.boss.giant[0];
+    this.key = IDLE[this.who];
+    this.giant = s.add.image(CX, this.topY, this.key).setOrigin(0.5, 0).setScale(this.sc).setDepth(-4.5).setAlpha(T.giantAlpha);
+    this.holesG = s.add.graphics().setDepth(-4.45);
+    this.cubesG = s.add.graphics().setDepth(-4.4);
+    this.hurtAt = -99;
+    this.atkAt = -99;
+    this.bob = 0;
+    this.holesShown = 0;
+    this.gone = false; // crumbled
+    // where the pieces go missing: fixed spots on the body, in sprite pixels
+    this.holes = [];
+    for (let i = 0; i < T.holes; i++) this.holes.push({ x: 7 + Math.floor(rnd(i + 3) * 19), y: 5 + Math.floor(rnd(i + 40) * 44), w: 3 + Math.floor(rnd(i + 80) * 3) });
+    this.cubes = [];
+    for (let i = 0; i < CUBES; i++) this.cubes.push({ on: false, x: 0, y: 0, vx: 0, vy: 0, size: 0, color: 0, life: 0, wait: 0 });
+    this.cubeAt = 0;
+    // damage numbers: a small pool of texts, reused in turn
+    const style = { fontFamily: FONT_PS, fontSize: px(9) + 'px', color: '#ffffff' };
+    this.dmgTexts = [];
+    for (let i = 0; i < 6; i++) this.dmgTexts.push(s.add.text(0, 0, '', style).setOrigin(0.5).setDepth(7).setAlpha(0).setShadow(px(2), px(2), '#000000', 0, false, true));
+    this.dmgAt = 0;
+  }
+
+  // Where the attacks land: the giant's face.
+  aim() {
+    return { x: this.giant.x, y: this.giant.y + 15 * this.sc };
+  }
+
+  // The boss took `taken` (1 = the whole boss): it flinches and a number flies out.
+  onHurt(i, taken, strong) {
+    this.hurtAt = this.vis;
+    const s = this.s;
+    const t = this.dmgTexts[this.dmgAt++ % this.dmgTexts.length];
+    s.tweens.killTweensOf(t);
+    const y = px(s.stackBottom + 64);
+    t.setText('-' + Math.max(1, Math.round(taken * 1000)))
+      .setColor(strong ? '#ffffff' : '#ff7a7a')
+      .setPosition(CX + px(Phaser.Math.Between(-78, 78)), y)
+      .setScale(strong ? 1.5 : 1)
+      .setAlpha(1);
+    s.tweens.add({ targets: t, y: y - px(24), alpha: 0, scale: strong ? 1.1 : 0.8, duration: 520, ease: 'Quad.Out' });
+  }
+
+  cube(x, y, vx, vy, size, color, life, wait = 0) {
+    const c = this.cubes[this.cubeAt++ % CUBES];
+    c.on = true;
+    c.x = x;
+    c.y = y;
+    c.vx = vx;
+    c.vy = vy;
+    c.size = size;
+    c.color = color;
+    c.life = life;
+    c.wait = wait;
+  }
+
+  updateGiant(sb, vdt) {
+    const s = this.s;
+    const B = s.boss;
+    const seg = B.segs[B.phase];
+    const who = s.level.boss.giant[B.phase];
+    if (who !== this.who) {
+      this.who = who;
+      this.holesShown = 0;
+    }
+    const kneel = seg.hp === 0 || this.stunned(sb);
+    const hurt = Phaser.Math.Clamp(1 - (this.vis - this.hurtAt) / 0.17, 0, 1);
+    const atk = Phaser.Math.Clamp(1 - (this.vis - this.atkAt) / 0.34, 0, 1);
+    const key = kneel ? who + '-ko' : hurt > 0 ? who + '-hurt' : atk > 0 ? who + '-attack' : seg.hp < seg.cap * 0.5 ? who + '-broken' : IDLE[who];
+    const g = this.giant;
+    if (key !== this.key) {
+      this.key = key;
+      g.setTexture(key);
+    }
+    if (vdt > 0) this.bob = kneel ? 0 : Math.abs(Math.sin(sb * Math.PI)) * px(4); // frozen: the pose holds
+    const lunge = Math.sin(atk * Math.PI) * px(18); // it leans down the highway at you
+    const shake = this.reduced ? 0 : Math.sin(this.vis * 90) * hurt * px(3);
+    g.setPosition(CX + shake, this.topY + (kneel ? px(64) : 0) - this.bob + lunge);
+    g.setScale(this.sc * (1 + atk * 0.05));
+    if (hurt > 0.6 && !kneel && !this.reduced) g.setTintFill(0xffffff);
+    else g.clearTint();
+    g.setVisible(!this.gone);
+
+    // pieces missing: as many as the health lost
+    const hg = this.holesG.clear();
+    if (this.gone) return;
+    const n = Math.floor((1 - seg.hp / seg.cap) * T.holes + 0.001);
+    const x0 = g.x - (SPRITE_W / 2) * g.scaleX;
+    for (let i = 0; i < n; i++) {
+      const h = this.holes[i];
+      const hx = x0 + h.x * g.scaleX;
+      const hy = g.y + h.y * g.scaleX;
+      hg.fillStyle(COLORS.bg, 1).fillRect(hx, hy, h.w * g.scaleX, h.w * g.scaleX);
+      hg.lineStyle(px(1), COLORS.red, 0.7).strokeRect(hx, hy, h.w * g.scaleX, h.w * g.scaleX);
+      if (i >= this.holesShown) {
+        // a new piece comes off
+        for (let k = 0; k < 5; k++) this.cube(hx + Math.random() * h.w * g.scaleX, hy, px(-120 + Math.random() * 240), px(-160 - Math.random() * 120), px(4 + Math.floor(Math.random() * 5)), CUBE_COLORS[k % CUBE_COLORS.length], 0.9);
+      }
+    }
+    this.holesShown = Math.max(this.holesShown, n);
+  }
+
+  // The final KO: the giant falls apart into the pixels it is made of. They let go one
+  // band at a time, top first, `gap` seconds apart (half a beat), so it crumbles in time.
+  crumble(gap, power = 1) {
+    if (this.gone) return;
+    this.gone = true;
+    const g = this.giant;
+    const rects = SPRITES[this.key] || [];
+    const step = Math.max(1, Math.ceil(rects.length / CUBES));
+    const x0 = g.x - (SPRITE_W / 2) * g.scaleX;
+    for (let i = 0; i < rects.length; i += step) {
+      const [x, y, w, h, c] = rects[i];
+      const band = Math.floor((y / SPRITE_H) * 4);
+      const size = Math.min(px(14), Math.max(w, h, 2) * g.scaleX * 0.6);
+      this.cube(x0 + (x + w / 2) * g.scaleX, g.y + (y + h / 2) * g.scaleX, px(-200 + Math.random() * 400) * power, px(-260 - Math.random() * 240) * power, size, parseInt(PALETTE[c].slice(1), 16), 1.6, band * gap);
+    }
+  }
+
+  drawCubes(vdt) {
+    const g = this.cubesG.clear();
+    const grav = px(1300) * vdt;
+    for (const c of this.cubes) {
+      if (!c.on) continue;
+      if (c.wait > 0) {
+        c.wait -= vdt; // still part of the giant
+      } else {
+        c.life -= vdt;
+        if (c.life <= 0) {
+          c.on = false;
+          continue;
+        }
+        c.vy += grav;
+        c.x += c.vx * vdt;
+        c.y += c.vy * vdt;
+      }
+      g.fillStyle(c.color, Math.min(1, c.life * 2)).fillRect(c.x - c.size / 2, c.y - c.size / 2, c.size, c.size);
+    }
   }
 
   // ---- frame ---------------------------------------------------------------------
@@ -136,6 +287,8 @@ export class BossShow {
     }
     this.g.clear();
     this.dark.clear();
+    this.updateGiant(sb, vdt);
+    this.drawCubes(vdt);
     this.drawAttacks(vdt);
     this.drawCounter(sb);
   }
@@ -211,6 +364,8 @@ export class BossShow {
 
   destroy() {
     this.g.destroy();
+    this.holesG.destroy();
+    this.cubesG.destroy();
     this.dark.destroy();
   }
 }

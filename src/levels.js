@@ -163,9 +163,9 @@ export const LEVELS = {
     boss: {
       starts: [0, 24, 48],
       share: [0.3, 0.3, 0.4],
-      faces: ['quiete-smile', 'ministro-calm', 'ministro-angry'],
-      // who stands on stage in each phase (battle sprites either side of the speakers)
-      fighters: [['quiete'], ['ministro'], ['quiete', 'ministro']],
+      faces: ['quiete-smile', 'ministro-calm', 'fusion-idle'],
+      // the giant behind the highway in each phase (sprites `<who>-*` from tools/make_sprites.py)
+      giant: ['quiete', 'ministro', 'fusion'],
       // black bars over a lane: the far part of the highway is hidden, notes show up late.
       // { from, to } in beats from bar 1.
       censor: [
