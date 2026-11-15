@@ -19,7 +19,16 @@ Aggiornato dopo i test di gioco di Stefano. Il contesto generale sta in `CLAUDE.
 
 IT/EN (`src/texts.it.js`, `src/texts.en.js`, scelta in `Lang` prima del caricamento). Ogni chiave nuova va in tutte e due; `npm run check:story` controlla entrambe.
 
-## DA FARE: finale spettacolare che porta al click sul link dell'EP
+## FATTO (branch `feature/boss-spectacle`): boss spettacolo + ESEGUI + schermata EP
+
+Stadi A-G fatti, dettagli in `CLAUDE.md` (sezione "Boss spettacolo"). Numeri in `src/bossTuning.js`.
+Esiti con il bot: perfetto = high (0% rimasto), `?boss=good` = high (1,6%), `?boss=bad` = low (67%).
+
+Da provare su telefono: leggibilità delle note sopra il colosso (`giantAlpha`, `roadAlpha`), bilanciamento (`base`, `guardMax`, `stunDmg`), attesa su ESEGUI (loop del riser: si sente un click?), apertura del link da ASCOLTA.
+
+Non fatto (stadio H): terminale che prende il controllo, barra OVERDRIVE.EXP al 99%, lista tracce come pacchetti, contatore utenti. La sezione sotto resta come piano per quello.
+
+## Piano originale del finale (in parte fatto, vedi sopra)
 
 Obiettivo: dopo la boss fight il giocatore deve vivere un momento "wow" che finisce in modo naturale sul pulsante dell'EP (Spotify/Bandcamp, `EP.links` in `src/campaign.js`). Oggi il boss finisce nei pannelli di storia e poi nel verbale normale: troppo piatto. I finali di storia dicono già "Premi ESEGUI", ma il pulsante non esiste.
 

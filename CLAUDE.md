@@ -67,3 +67,18 @@ Le decisioni dopo i test di gioco (livello 1 rifatto, livello 2 perfetto, livell
 ## Mappe note dal segnale (livelli 1, 2 e 3)
 
 Le note del drop di BRAZILIAN DUB e ACID sono state rifatte guardando spettrogrammi e analisi per banda della clip (non a orecchio). BRAZILIAN: corsia 1 = stab del synth dubstep, corsia 2 = nota lunga per ogni blocco di bassone, corsia 0 = kick solo dove il basso tace. ACID: corsia 0 = kick su ogni battuta, corsia 1 = basso in levare (steps 6 e 14, tutti e quattro nei fill). La griglia delle clip è corretta (scarto di pochi ms): se qualcosa suona fuori tempo il problema è la scelta delle note, non il timing. Verifica: `src/music/check/check_*.wav` (traccia con un click per nota; cartella ignorata da git).
+
+## Boss spettacolo (branch `feature/boss-spectacle`)
+
+Sostituisce la descrizione del capitolo 3 qui sopra dove sono diverse.
+
+- File: `src/bossTuning.js` (`BOSS_TUNING`, **tutti** i numeri di bilanciamento), `src/bossShow.js` (`BossShow`: attacchi di combo, guardia e stordimento, colosso, cut-in, quartieri, cambi fase, KO), `src/bossFinale.js` (`BossFinale`: ESEGUI e schermata EP). `Play.js` li pilota con agganci (`show.onHit`, `show.onBreak`, `takeBoss`, `closeFight`, `finale.tap`).
+- Struttura reale della traccia (misurata): battute 1-19 combattimento, **battuta 20 stacco** (carica di ESEGUI), **21-27 drop** (parte al tocco, 24-27 in loop sotto la schermata EP). La clip è di 27 battute. L'esito si fissa a fine battuta 19 (`Play.closeFight`, `bossResult`).
+- Combo: soglie 10 / 25 / 40 lanciano RIFF / DROP / ROOT dai due coni del basso. Rottura di una combo >= 10: contrattacco (ombra su una corsia, solo visivo) e guardia dimezzata.
+- Guardia: perfect +1, good +0,5, errore -2; piena = stordimento (note oro, danno x3, zoom). Un segmento vuoto non uccide: il boss resta in ginocchio fino a ESEGUI.
+- Colosso: lo sprite della fase (`giant` nel blocco `boss`: quiete, ministro, fusion) sta dietro l'autostrada e si vede attraverso. Buchi secondo la vita del segmento, sprite `-broken` sotto metà, `-ko` in ginocchio. Sprite nuovi: `quiete-broken`, `ministro-broken`, `fusion-*` (`build_fusion`).
+- Quartieri: `districtState()` in `progress.js` (ID livelli `brazilian` e `acid`); carica automatica 4 battiti dopo l'inizio delle fasi 2 e 3.
+- Parole giganti: `flashWord(word, ms, prio)` ha priorità e coda a un posto. Parole di evento in `TEXTS.boss.words` (controllate da `check:story`).
+- Freeze e rallentatore sono solo visivi (`show.freeze`, `show.slow`): note, giudizi e audio non si fermano. Unica attesa: il tocco di ESEGUI.
+- Debug: `?finale`, `?boss=good|bad` (con `?auto`), `?hp=0..1`, `?notap`, `?districts=high,mid`.
+- TODO: mappa note del boss ancora bozza; sequenza PAYLOAD completa (terminale, barra OVERDRIVE.EXP, lista pacchetti); copertina vera di Gabriel (ora segnaposto in `BossFinale.showEp`); link reali in `campaign.js`.
