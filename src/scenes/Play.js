@@ -35,6 +35,8 @@ const REWIND_PRE = 2; // beats of run-up before the first replayed note
 const REWIND_PAUSE = 0.35; // seconds of silence before the track restarts
 const REWIND_ANIM = 1.2; // seconds the tape takes to wind back
 const LANE_COLORS = [COLORS.red, COLORS.paper, COLORS.red];
+const GRADE_WEIGHT = { perfect: 1, good: 0.7, ok: 0.4 }; // same weights as the accuracy in rank.js
+const CENSOR_S = 0.55; // a censored lane hides everything farther than this scale (about 1.2 beats out)
 const JUDGE_COLORS = { perfect: '#ffffff', good: '#ff2a2a', ok: '#c0c0c0', miss: '#b8121a', broken: '#b8121a' };
 const KEYS = { A: 0, S: 1, D: 2, J: 0, K: 1, L: 2, LEFT: 0, DOWN: 1, RIGHT: 2 };
 
@@ -103,6 +105,7 @@ export class Play extends Phaser.Scene {
     this.buildSideType();
     this.bgG = this.add.graphics().setDepth(-6);
     this.roadG = this.add.graphics().setDepth(-4);
+    this.censorG = this.add.graphics().setDepth(-3);
     this.fxG = this.add.graphics().setDepth(-2).setBlendMode(Phaser.BlendModes.ADD);
     this.hudG = this.add.graphics().setDepth(5);
     this.buildHud();
@@ -152,6 +155,9 @@ export class Play extends Phaser.Scene {
     this.forgeUntil = 0;
     this.forgeDone = false;
     this.autoRewindDone = false;
+    this.rootDone = false;
+    this.boss = L.boss ? this.initBoss() : null;
+    this.buildBossHud();
     this.badge = null;
     this.giftDone = false;
     track('level_start', { level: L.id });
@@ -373,6 +379,7 @@ export class Play extends Phaser.Scene {
     this.maxCombo = Math.max(this.maxCombo, this.combo);
     this.addScore(g.points);
     this.addOd(g.od);
+    if (this.boss) this.damageBoss(n, g.key);
     if (n.len > 0) {
       n.st = 'hold';
       this.held[n.lane] = n;
@@ -752,6 +759,11 @@ export class Play extends Phaser.Scene {
       if (n.st === 'hold') n.st = 'done';
       if (n.b < nb - 0.01) continue;
       if (combo === null && n.cb !== undefined) combo = n.cb;
+      if (n.bd) {
+        const seg = this.boss.segs[this.bossAt(n.b)];
+        seg.hp = Math.min(seg.cap, seg.hp + n.bd);
+        n.bd = 0;
+      }
       if (n.grade && this.counts[n.grade] > 0) this.counts[n.grade]--;
       this.score -= n.pts || 0;
       this.od -= n.odd || 0;
@@ -919,6 +931,7 @@ export class Play extends Phaser.Scene {
       total: this.notes.length,
       odPeak: this.odPeak,
       auto: this.auto,
+      boss: this.boss ? this.bossLeft() : undefined,
     };
     if (!this.auto) settings.set('tutorialDone', true);
     track('level_complete', { level: this.level.id, rank: rank(result) });
@@ -928,6 +941,150 @@ export class Play extends Phaser.Scene {
       ? ['Story', { id: chapter, next: { scene: 'End', data: result } }]
       : ['End', result];
     this.time.delayedCall(520, () => this.scene.start(...next));
+  }
+
+  // ---- the boss fight ----------------------------------------------------------
+  // The level's `boss` block splits the boss's health into one segment per phase. Every note
+  // you hit takes some of the segment of the phase it belongs to; what the segments are
+  // worth is worked out so that playing a phase at about 85% empties it. ID FALSA hits 1.5x,
+  // root access 2x. A note taken back by a rewind gives its damage back.
+  initBoss() {
+    const B = this.level.boss;
+    const segs = B.starts.map((start, i) => {
+      const end = i + 1 < B.starts.length ? B.starts[i + 1] : Infinity;
+      const n = this.notes.filter((x) => x.b >= start && x.b < end).length;
+      return { start, cap: B.share[i], hp: B.share[i], n: Math.max(1, n) };
+    });
+    return { segs, phase: 0, flash: 0, shake: 0, face: B.faces[0], shown: -1 };
+  }
+
+  bossAt(b) {
+    let at = 0;
+    this.boss.segs.forEach((s, i) => {
+      if (b >= s.start) at = i;
+    });
+    return at;
+  }
+
+  bossLeft() {
+    const left = this.boss.segs.reduce((sum, s) => sum + s.hp, 0);
+    return left < 0.001 ? 0 : left;
+  }
+
+  damageBoss(n, key) {
+    const B = this.boss;
+    const i = this.bossAt(n.b);
+    const seg = B.segs[i];
+    if (seg.hp <= 0) return;
+    const mult = (this.odMode ? 2 : 1) * (this.forged() ? 1.5 : 1);
+    const dmg = ((GRADE_WEIGHT[key] || 0.4) / seg.n) * (seg.cap / this.level.boss.base) * mult;
+    const taken = Math.min(seg.hp, dmg);
+    seg.hp = seg.hp - taken < 0.0005 ? 0 : seg.hp - taken;
+    n.bd = (n.bd || 0) + taken;
+    B.flash = 1;
+    B.shake = 1;
+    if (seg.hp === 0) this.bossDown(i);
+  }
+
+  bossDown(i) {
+    const T = TEXTS.boss;
+    const dead = this.bossLeft() === 0;
+    this.flash = dead ? 1 : 0.6;
+    this.cameras.main.shake(dead ? 420 : 260, dead ? 0.016 : 0.01);
+    this.say(dead ? T.ko : T.phaseDown[i], 'win', dead ? 1700 : 1200);
+    if (navigator.vibrate) navigator.vibrate(dead ? [30, 40, 30, 40, 80] : [30, 30, 30]);
+    track('boss_phase_down', { phase: i, dead });
+  }
+
+  // Phase changes: the name, the face and the percentage in the strip under the HUD.
+  updateBoss(dt) {
+    const B = this.boss;
+    const L = this.level.boss;
+    const sb = this.songBeat();
+    const ph = this.bossAt(Math.max(0, sb));
+    if (ph !== B.phase) {
+      B.phase = ph;
+      this.bossName.setText(TEXTS.boss.phases[ph]);
+    }
+    const face = this.bossLeft() === 0 ? 'quiete-error' : B.segs[ph].hp === 0 ? 'quiete-error' : L.faces[ph];
+    if (face !== B.face) {
+      B.face = face;
+      this.bossFace.setTexture(face).setCrop(0, 0, 36, 26);
+    }
+    B.flash = Math.max(0, B.flash - dt * 5);
+    B.shake = Math.max(0, B.shake - dt * 6);
+    this.bossFace.setX(px(8) + Math.sin(this.time.now / 22) * px(2.5) * B.shake);
+    const pct = Math.round(this.bossLeft() * 100);
+    if (pct !== B.shown) {
+      B.shown = pct;
+      this.bossHp.setText(`${TEXTS.boss.hp} ${String(pct).padStart(3, ' ')}%`);
+    }
+  }
+
+  buildBossHud() {
+    this.censorTexts = [];
+    const L = this.level;
+    if (!L.boss) return;
+    const ps = (size, color) => ({ fontFamily: FONT_PS, fontSize: px(size) + 'px', color });
+    this.ticker.setVisible(false);
+    this.bossFace = this.add.image(px(8), px(98), L.boss.faces[0]).setOrigin(0).setDepth(6.5).setCrop(0, 0, 36, 26).setScale(K * 0.67);
+    this.bossName = this.add.text(px(38), px(98), TEXTS.boss.phases[0], ps(6, '#ffffff')).setDepth(6.5);
+    this.bossHp = this.add.text(W - px(8), px(98), '', ps(6, '#ff7a7a')).setOrigin(1, 0).setDepth(6.5);
+    // the word on a censored lane
+    for (let l = 0; l < L.lanes; l++) {
+      this.censorTexts.push(this.add.text(0, 0, TEXTS.boss.censored, ps(8, '#ff2a2a')).setOrigin(0.5).setDepth(-2.9).setAlpha(0));
+    }
+  }
+
+  // The health bar: one well per phase, the live phase in red, a white flash on every hit.
+  drawBossBar(g) {
+    const B = this.boss;
+    const x0 = px(38);
+    const y = px(107);
+    const h = px(9);
+    const gap = px(4);
+    const total = B.segs.reduce((sum, s) => sum + s.cap, 0);
+    const room = W - px(8) - x0 - gap * (B.segs.length - 1);
+    let x = x0;
+    B.segs.forEach((s, i) => {
+      const w = (room * s.cap) / total;
+      const live = i === B.phase;
+      g.fillStyle(COLORS.redDeep, 1).fillRect(x, y, w, h);
+      if (s.hp > 0) {
+        g.fillStyle(live ? COLORS.red : COLORS.redDark, 1).fillRect(x, y, w * (s.hp / s.cap), h);
+        if (live && B.flash > 0) g.fillStyle(0xffffff, B.flash * 0.75).fillRect(x, y, w * (s.hp / s.cap), h);
+      }
+      g.lineStyle(px(1), COLORS.silver, live ? 0.95 : 0.5).strokeRect(x, y, w, h);
+      x += w + gap;
+    });
+  }
+
+  // Censorship (boss phase 1): a black bar over one lane hides the far part of the highway,
+  // so its notes only show up about a beat before they land. It fades in a beat ahead.
+  drawCensor(sb) {
+    const g = this.censorG;
+    g.clear();
+    const B = this.level.boss;
+    if (!B) return;
+    this.censorTexts.forEach((t) => t.setAlpha(0));
+    if (this.rew || !B.censor) return;
+    const n = this.level.lanes;
+    const edge = (k, s) => CX + (k - n / 2) * px(LANE_W) * s;
+    const yF = this.yOf(S_FAR);
+    const yC = this.yOf(CENSOR_S);
+    for (const c of B.censor) {
+      const a = Phaser.Math.Clamp(Math.min(sb - (c.from - 1), c.to - sb), 0, 1);
+      if (a <= 0) continue;
+      g.fillStyle(0x000000, 0.97 * a);
+      quad(g, edge(c.lane, S_FAR), yF, edge(c.lane + 1, S_FAR), yF, edge(c.lane + 1, CENSOR_S), yC, edge(c.lane, CENSOR_S), yC);
+      g.lineStyle(px(2), COLORS.red, 0.7 * a);
+      g.lineBetween(edge(c.lane, CENSOR_S), yC, edge(c.lane + 1, CENSOR_S), yC);
+      const sm = (S_FAR + CENSOR_S) / 2;
+      this.censorTexts[c.lane]
+        .setPosition(this.laneX(c.lane, sm), this.yOf(sm))
+        .setScale(sm * 1.7)
+        .setAlpha(a);
+    }
   }
 
   // ---- frame loop ------------------------------------------------------------
@@ -1032,8 +1189,17 @@ export class Play extends Phaser.Scene {
     if (!this.autoRewindDone && L.autoRewindBeat !== undefined && sb >= L.autoRewindBeat && !this.over) {
       this.autoRewindDone = true;
       this.missRun = 0;
-      this.flashWord(TEXTS.helper.rewind, 900);
     }
+    // boss, phase 3: root access opens by itself
+    if (!this.rootDone && L.rootBeat !== undefined && sb >= L.rootBeat && !this.over && !this.rew) {
+      this.rootDone = true;
+      if (!this.odMode) {
+        this.od = 100;
+        this.odPeak = 100;
+        this.startOdMode();
+      }
+    }
+    if (this.boss) this.updateBoss(dt);
     if (!this.forgeDone && L.forgeBeat !== undefined && sb >= L.forgeBeat && !this.badge && !this.over) {
       this.forgeDone = true;
       this.spawnBadge('forge');
@@ -1041,6 +1207,7 @@ export class Play extends Phaser.Scene {
     this.drawTutorial(sb);
     this.drawStage(sb, dt, bands, bass);
     this.drawRoad(sb);
+    this.drawCensor(sb);
     this.drawFx(dt);
     this.drawHud(time);
   }
@@ -1296,8 +1463,14 @@ export class Play extends Phaser.Scene {
     const g = this.hudG;
     g.clear();
     // marquee band
-    g.fillStyle(0x000000, 1).fillRect(0, px(96), W, px(18));
-    g.fillStyle(COLORS.redDark, 1).fillRect(0, px(96), W, px(1)).fillRect(0, px(113), W, px(1));
+    if (this.boss) {
+      g.fillStyle(0x000000, 1).fillRect(0, px(95), W, px(26));
+      g.fillStyle(COLORS.redDark, 1).fillRect(0, px(95), W, px(1)).fillRect(0, px(120), W, px(1));
+      this.drawBossBar(g);
+    } else {
+      g.fillStyle(0x000000, 1).fillRect(0, px(96), W, px(18));
+      g.fillStyle(COLORS.redDark, 1).fillRect(0, px(96), W, px(1)).fillRect(0, px(113), W, px(1));
+    }
 
     // overdrive bar: sunken Y2K well, LED segments, legal limit marker at 60%
     const x = px(96);

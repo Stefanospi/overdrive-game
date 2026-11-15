@@ -7,7 +7,7 @@ import { TEXTS } from '../texts.js';
 import { EP } from '../campaign.js';
 import { fragments, bestOf } from '../progress.js';
 
-// Map of the Ministry's system: five layers, one per track. Cleared layers light up
+// Map of the Ministry's system: three layers (two tracks, then the boss). Cleared layers light up
 // their district; the rest wait for the next single.
 export class Hub extends Phaser.Scene {
   constructor() {
@@ -51,11 +51,11 @@ export class Hub extends Phaser.Scene {
       let status = H.locked;
       if (level) {
         const b = bestOf(node.id);
-        status = lit ? `OK  ${b ? String(b.score).padStart(7, '0') : ''}` : 'DA INFETTARE';
+        status = lit ? `${TEXTS.ui.cleared}  ${b ? String(b.score).padStart(7, '0') : ''}` : TEXTS.ui.toInfect;
       }
       this.add.text(px(96), px(y + 36), status, { fontFamily: FONT_VT, fontSize: px(17) + 'px', color: lit ? '#ff2a2a' : '#8a8a94' });
       if (level) {
-        button(this, W - px(58), px(y + 22), px(86), px(30), lit ? TEXTS.ui.again : 'ENTRA', () => this.enter(node.id), { primary: !lit, size: 8, depth: 6 });
+        button(this, W - px(58), px(y + 22), px(86), px(30), lit ? TEXTS.ui.again : TEXTS.ui.enter, () => this.enter(node.id), { primary: !lit, size: 8, depth: 6 });
       }
     });
 

@@ -38,7 +38,7 @@ export class Board extends Phaser.Scene {
     g.fillStyle(COLORS.redDark, 1).fillRect(px(16), px(54), W - px(32), px(46));
     g.lineStyle(px(2), 0x000000, 1).strokeRect(px(16), px(54), W - px(32), px(46));
     this.add.text(W / 2, px(63), `${B.prizeHead} (TOP ${EP.prize.top})`, ps(7)).setOrigin(0.5, 0);
-    this.add.text(W / 2, px(78), EP.prize.text, vt(22, '#ffffff')).setOrigin(0.5, 0);
+    this.add.text(W / 2, px(78), TEXTS.campaign.prizeText, vt(22, '#ffffff')).setOrigin(0.5, 0);
 
     this.rowsTop = 112;
     this.list = this.add.container(0, 0);
@@ -121,7 +121,7 @@ export class Board extends Phaser.Scene {
           this.showRows(rows);
         });
       } else {
-        msg.textContent = r.reason === 'slow' ? 'Aspetta un minuto e riprova.' : B.error;
+        msg.textContent = r.reason === 'slow' ? B.slow : B.error;
       }
     });
   }

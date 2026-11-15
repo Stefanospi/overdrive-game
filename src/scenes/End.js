@@ -147,10 +147,10 @@ export class End extends Phaser.Scene {
       .text(x0 + TOTAL_FRAGMENTS * px(22) + px(6), fy + px(13), `${prog.count}/${TOTAL_FRAGMENTS}`, vt(18, '#c0c0c0'))
       .setDepth(6);
     this.add
-      .text(x0, fy + px(36), `USCITA ${EP.dateLabel}${EP.indicative ? ' (' + TEXTS.campaign.indicative + ')' : ''}`, vt(16, '#e9e4dc'))
+      .text(x0, fy + px(36), `${TEXTS.campaign.release} ${EP.dateLabel}${EP.indicative ? ' (' + TEXTS.campaign.indicative + ')' : ''}`, vt(16, '#e9e4dc'))
       .setDepth(6);
     this.add
-      .text(x0, fy + px(52), `${TEXTS.campaign.prize} ${EP.prize.top}: ${EP.prize.text}`, vt(17, '#ff7a7a'))
+      .text(x0, fy + px(52), `${TEXTS.campaign.prize} ${EP.prize.top}: ${TEXTS.campaign.prizeText}`, vt(17, '#ff7a7a'))
       .setDepth(6);
 
     const bw = (cw2 - px(10)) / 2;

@@ -5,6 +5,8 @@ export function accuracy({ counts, total }) {
 
 // 'high' = the district is back on, 'mid' = the signal got through, 'low' = it did not
 export function rank(result) {
+  // boss fight: what is left of the boss decides (`boss` = health left, 0 to 1)
+  if (typeof result.boss === 'number') return result.boss <= 0.02 ? 'high' : result.boss <= 0.5 ? 'mid' : 'low';
   const acc = accuracy(result);
   if (result.odPeak >= 100 || acc >= 0.85) return 'high';
   return acc >= 0.5 ? 'mid' : 'low';

@@ -12,10 +12,13 @@
 //   - endings <level>_high / _mid / _low: 6-8 / 4-5 / 4 panels, and a 3-word status panel
 //     (no speaker) closes them. The boss endings (BOSS_LEVELS) close on a Mars line and
 //     carry the status panel just before it.
-import { TEXTS } from '../src/texts.js';
+import { LANGS } from '../src/texts.js';
 
 const BOSS_LEVELS = ['server'];
-const ALLOWED_LABELS = ['MARS', 'ADRIANA.EXE', 'GABRIEL.EXE', 'IL MINISTRO', 'QUIETE.SYS', 'DECRETO N.140'];
+const ALLOWED_LABELS = {
+  it: ['MARS', 'ADRIANA.EXE', 'GABRIEL.EXE', 'IL MINISTRO', 'QUIETE.SYS', 'DECRETO N.140'],
+  en: ['MARS', 'ADRIANA.EXE', 'GABRIEL.EXE', 'THE MINISTER', 'QUIETE.SYS', 'DECREE NO.140'],
+};
 const COUNTS = { high: [6, 8], mid: [4, 5], low: [4, 4] };
 const MAX_WORDS = 8;
 const MAX_GIANT = 2;
@@ -24,46 +27,52 @@ const words = (t) => (t.match(/\S+/g) || []).length;
 const audit = process.argv.includes('--audit');
 const rows = [];
 const bad = [];
-const flag = (id, msg) => bad.push(`${id}: ${msg}`);
 
-for (const [label, name] of Object.entries(TEXTS.names)) {
-  if (!ALLOWED_LABELS.includes(name)) flag(`names.${label}`, `label "${name}" is not allowed`);
+for (const [code, TEXTS] of Object.entries(LANGS)) {
+  const flag = (id, msg) => bad.push(`[${code}] ${id}: ${msg}`);
+  check(code, TEXTS, flag);
 }
 
-for (const [cid, ch] of Object.entries(TEXTS.story)) {
-  if (!ch || !ch.panels) continue;
-  const ending = cid.match(/^(\w+)_(high|mid|low)$/);
-  const boss = ending && BOSS_LEVELS.includes(ending[1]);
-  ch.panels.forEach((p, i) => {
-    const id = `${cid}#${i + 1}`;
-    const n = words(p.text);
-    const issues = [];
-    if (n > MAX_WORDS) issues.push(`${n} words (max ${MAX_WORDS})`);
-    if (/\b141\b/.test(p.text)) issues.push('"141": the forged decree is N.139');
-    if (/^Errore/.test(p.text) && !/^Errore \d+: /.test(p.text)) issues.push('error format: "Errore NNN: <cosa>."');
-    if (p.who && !TEXTS.names[p.who]) issues.push(`unknown speaker "${p.who}"`);
-    issues.forEach((m) => flag(id, m));
-    rows.push([id, p.who || (p.caption ? 'narr' : '-'), n, p.text, issues.join('; ')]);
-  });
-  if (ending) {
-    const [lo, hi] = COUNTS[ending[2]];
-    const len = ch.panels.length;
-    if (len < lo || len > hi) flag(cid, `${len} panels (expected ${lo}-${hi})`);
-    const at = boss ? len - 2 : len - 1;
-    const st = ch.panels[at];
-    if (!st || st.who || words(st.text) !== 3) flag(`${cid}#${at + 1}`, 'the closing status must be 3 words and have no speaker');
-    if (boss && ch.panels[len - 1].who !== 'mars') flag(`${cid}#${len}`, 'the boss ending closes on a Mars line (payload)');
+function check(code, TEXTS, flag) {
+  for (const [label, name] of Object.entries(TEXTS.names)) {
+    if (!ALLOWED_LABELS[code].includes(name)) flag(`names.${label}`, `label "${name}" is not allowed`);
   }
-}
-
-for (const [lid, list] of Object.entries(TEXTS.script)) {
-  list.forEach((w, i) => {
-    const id = `script.${lid}[bar ${w.bar}]`;
-    const n = words(w.word);
-    const issues = n > MAX_GIANT ? [`${n} words (max ${MAX_GIANT})`] : [];
-    issues.forEach((m) => flag(id, m));
-    rows.push([id, 'giant', n, w.word, issues.join('; ')]);
-  });
+  
+  for (const [cid, ch] of Object.entries(TEXTS.story)) {
+    if (!ch || !ch.panels) continue;
+    const ending = cid.match(/^(\w+)_(high|mid|low)$/);
+    const boss = ending && BOSS_LEVELS.includes(ending[1]);
+    ch.panels.forEach((p, i) => {
+      const id = `${cid}#${i + 1}`;
+      const n = words(p.text);
+      const issues = [];
+      if (n > MAX_WORDS) issues.push(`${n} words (max ${MAX_WORDS})`);
+      if (/\b141\b/.test(p.text)) issues.push('"141": the forged decree is N.139');
+      if (/^Err(ore|or)/.test(p.text) && !/^Err(ore|or) \d+: /.test(p.text)) issues.push('error format: "Errore NNN: <cosa>."');
+      if (p.who && !TEXTS.names[p.who]) issues.push(`unknown speaker "${p.who}"`);
+      issues.forEach((m) => flag(id, m));
+      rows.push([`${code}:${id}`, p.who || (p.caption ? 'narr' : '-'), n, p.text, issues.join('; ')]);
+    });
+    if (ending) {
+      const [lo, hi] = COUNTS[ending[2]];
+      const len = ch.panels.length;
+      if (len < lo || len > hi) flag(cid, `${len} panels (expected ${lo}-${hi})`);
+      const at = boss ? len - 2 : len - 1;
+      const st = ch.panels[at];
+      if (!st || st.who || words(st.text) !== 3) flag(`${cid}#${at + 1}`, 'the closing status must be 3 words and have no speaker');
+      if (boss && ch.panels[len - 1].who !== 'mars') flag(`${cid}#${len}`, 'the boss ending closes on a Mars line (payload)');
+    }
+  }
+  
+  for (const [lid, list] of Object.entries(TEXTS.script)) {
+    list.forEach((w, i) => {
+      const id = `script.${lid}[bar ${w.bar}]`;
+      const n = words(w.word);
+      const issues = n > MAX_GIANT ? [`${n} words (max ${MAX_GIANT})`] : [];
+      issues.forEach((m) => flag(id, m));
+      rows.push([`${code}:${id}`, 'giant', n, w.word, issues.join('; ')]);
+    });
+  }
 }
 
 if (audit) {

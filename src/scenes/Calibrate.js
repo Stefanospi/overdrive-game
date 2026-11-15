@@ -106,7 +106,7 @@ export class Calibrate extends Phaser.Scene {
       if (best >= SKIP && Math.abs(d) < 0.22) ds.push(d);
     }
     if (ds.length < 5) {
-      this.status.setText('TROPPO POCHI TAP. RIPROVA.');
+      this.status.setText(TEXTS.calibrate.tooFew);
       this.state = 'idle';
       return;
     }

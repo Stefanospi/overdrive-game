@@ -76,14 +76,18 @@ const BRAZILIAN_PATTERNS = {
 };
 
 // ACID (techno), 2:50 to 3:45 of the track: 6 playable bars of build-up, then 22 of drop.
-// Read from the spectrogram: from the drop a straight kick lands on every beat (steps 0, 4,
-// 8, 12) and the acid bass answers on the off-beats (steps 2, 6, 10, 14).
-//   a  the kick alone                                  (calm bars)
-//   b  the kick, plus the off-beat on steps 6 and 14   (the groove)
-//   f  fill: kick on 1 and 3, the off-beat on all four (phrase ends, bars 13 and 21 of the clip)
-// Easy on purpose: one note per beat at most, and the two lanes never share a step.
+// Read from the signal (onset peaks of the clip, bars 8, 9 and 22 of the clip):
+//   kick        a straight kick on every beat (steps 0, 4, 8, 12)
+//   acid bass   on the off-beat (steps 6 and 14)
+//   synth       stabs at steps 7 and 15 (the answer to the bass), and at 1 and 9 on the busiest bars
+// The kick is lane 0, the acid lane 1, the synth lane 2; nothing shares a step.
+//   a  the kick alone                                     (rest)
+//   b  kick + acid on 6 and 14                            (the groove)
+//   c  kick + synth on 7 and 15                           (a pinch harder: a hit right before the next kick)
+//   d  kick + synth on 7 and 15 + stabs on 1 and 9        (the hardest bar)
+//   f  fill: kick on 1 and 3, the off-beat on all four    (phrase ends, bars 13 and 21 of the clip)
 const ACID_PATTERNS = {
-  //    lane 0 (kick)       lane 1 (off-beat acid)  lane 2 (unused)
+  //    lane 0 (kick)       lane 1 (acid)           lane 2 (synth)
   b1: ['x...............', '................', '................'],
   b2: ['x.......x.......', '................', '................'],
   b3: ['x...x...x...x...', '................', '................'],
@@ -92,6 +96,8 @@ const ACID_PATTERNS = {
   b6: ['x...x...x...x...', '................', '................'],
   a: ['x...x...x...x...', '................', '................'],
   b: ['x...x...x...x...', '......x.......x.', '................'],
+  c: ['x...x...x...x...', '................', '.......x.......x'],
+  d: ['x...x...x...x...', '.x.......x......', '.......x.......x'],
   f: ['x.......x.......', '..x...x...x...x.', '................'],
   z: ['x...............', '................', '................'],
 };
@@ -99,16 +105,40 @@ const ACID_PATTERNS = {
 // TOP ONE: the boss fight of chapter 3 (SERVER, QUIETE.SYS and the Minister). Speed house /
 // UK groove, 147 BPM; the clip starts on the first drop (1:25 of the master) and runs 22
 // bars, numbered from 1 here.
-//   phase 1 CENSURA  bars 1-6    QUIETE.SYS, lanes censored, Adriana's shield (giftBeat)
-//   phase 2 DECRETO  bars 7-12   the Minister, decrees; Gabriel's ID FALSA x2 on bars 9-12 (forgeBeat)
-//   phase 3 ROOT     bars 13-19  Minister+Quiete fused, all lanes, root at 100%; REWIND fires on its own
-//   outro            bars 20-22  cut and rise, few notes; victory on the last bar
-// TODO: the note map. The author writes it: no notes on the kick in any lane, put them on
-// the off-beat bass. Until then every bar is empty.
-// TODO (mechanics not in the engine yet): censored lanes (black bars), decrees as special
-// notes, forced root at 100% in phase 3, the payload screen after the ending.
+//   phase 1 CENSURA  bars 1-6    QUIETE.SYS: lanes get censored (black bars hide the far notes)
+//   phase 2 DECRETO  bars 7-12   the Minister: more notes; Gabriel's ID FALSA on bars 9-12 (forgeBeat)
+//   phase 3 ROOT     bars 13-19  Minister+Quiete fused: all lanes, root forced at the start
+//   outro            bars 20-22  cut and rise, few notes
+// Every correct hit hurts the boss (see `boss` in the level and Play.damageBoss).
+// Note map: no notes on the kick (steps 0, 4, 8, 12), everything on the off-beat bass
+// (steps 2, 6, 10, 14) with a few 16th pick-ups (5, 7, 11, 13, 15). Built on the signal's
+// off-beat pulse (bar 8 of the clip is exactly 2, 6, 10, 14), NOT yet checked by ear.
+// P turns [step, lane] pairs into a pattern.
+const P = (...hits) => {
+  const rows = [0, 1, 2].map(() => Array(16).fill('.'));
+  hits.forEach(([step, lane]) => (rows[lane][step] = 'x'));
+  return rows.map((r) => r.join(''));
+};
 const TOPONE_PATTERNS = {
-  e: ['................', '................', '................'], // TODO: replace with the real patterns
+  // phase 1: one hit per off-beat, slowly changing lanes
+  c1: P([2, 1], [6, 1], [10, 1], [14, 1]),
+  c2: P([2, 0], [6, 2], [10, 0], [14, 2]),
+  c3: P([2, 1], [6, 0], [10, 1], [14, 2]),
+  c4: P([2, 0], [6, 1], [10, 2], [14, 1]),
+  // phase 2: a pick-up before the next bar
+  d1: P([2, 0], [6, 1], [10, 2], [14, 1]),
+  d2: P([2, 2], [6, 1], [10, 0], [14, 1], [15, 0]),
+  d3: P([2, 1], [6, 2], [7, 0], [10, 1], [14, 0]),
+  d4: P([2, 0], [6, 1], [10, 0], [11, 1], [14, 2], [15, 1]),
+  // phase 3: all three lanes, pick-ups on 7 and 15
+  e1: P([2, 0], [6, 1], [7, 2], [10, 1], [14, 0], [15, 1]),
+  e2: P([2, 2], [6, 1], [10, 0], [11, 1], [14, 2]),
+  e3: P([2, 0], [6, 2], [7, 1], [10, 2], [14, 1], [15, 0]),
+  e4: P([2, 1], [5, 0], [6, 2], [10, 1], [13, 2], [14, 0]),
+  // outro: it thins out, the last bar leaves room for the fade
+  o1: P([2, 1], [6, 1], [10, 1], [14, 1]),
+  o2: P([2, 0], [6, 2], [10, 0]),
+  o3: P([2, 1], [6, 1]),
 };
 
 export const LEVELS = {
@@ -123,7 +153,23 @@ export const LEVELS = {
     synth: false,
     giftBeat: 12, // phase 1: Adriana's BONUS ROOT + shield (bar 4)
     forgeBeat: 32, // phase 2: Gabriel's ID FALSA, 16 beats = bars 9-12
-    autoRewindBeat: 48, // phase 3 (bar 13): the miss counter resets, the audio does not rewind
+    autoRewindBeat: 48, // phase 3 (bar 13): the miss counter resets...
+    rootBeat: 48, // ...and root access opens by itself
+    // The fight. A phase starts on each of these beats and has its own share of the boss's
+    // health (1 = the whole boss) and its own portrait. A phase is emptied by playing it at
+    // about 85% accuracy (`base`); ID FALSA and root hit harder, so they ease it.
+    boss: {
+      starts: [0, 24, 48],
+      share: [0.3, 0.3, 0.4],
+      faces: ['quiete-smile', 'ministro-calm', 'ministro-angry'],
+      base: 0.85,
+      // black bars over a lane: the far part of the highway is hidden, notes show up late.
+      // { from, to } in beats from bar 1.
+      censor: [
+        { from: 8, to: 16, lane: 2 },
+        { from: 16, to: 24, lane: 0 },
+      ],
+    },
     track: {
       url: topOneClip,
       lead: topOneTiming.lead,
@@ -132,7 +178,12 @@ export const LEVELS = {
       fadeOut: 0.3,
     },
     patterns: TOPONE_PATTERNS,
-    bars: Array.from({ length: 22 }, () => ['drop', 'e']),
+    bars: [
+      ['drop', 'c1'], ['hold', 'c2'], ['hold', 'c1'], ['hold', 'c3'], ['hold', 'c2'], ['hold', 'c4'],
+      ['drop', 'd1'], ['hold', 'd2'], ['hold', 'd1'], ['hold', 'd3'], ['hold', 'd2'], ['hold', 'd4'],
+      ['drop', 'e1'], ['hold', 'e2'], ['hold', 'e3'], ['hold', 'e1'], ['hold', 'e2'], ['hold', 'e3'], ['hold', 'e4'],
+      ['out', 'o1'], ['out', 'o2'], ['out', 'o3'],
+    ],
   },
 
   acid: {
@@ -155,12 +206,12 @@ export const LEVELS = {
     patterns: ACID_PATTERNS,
     bars: [
       ['build', 'b1'], ['build', 'b2'], ['build', 'b3'], ['build', 'b4'], ['build', 'b5'], ['build', 'b6'],
-      ['drop', 'a'], ['drop', 'a'], ['drop', 'b'], ['drop', 'a'],
-      ['drop', 'b'], ['drop', 'a'], ['drop', 'b'], ['drop', 'f'],
       ['drop', 'a'], ['drop', 'b'], ['drop', 'a'], ['drop', 'b'],
-      ['drop', 'a'], ['drop', 'b'], ['drop', 'b'], ['drop', 'f'],
-      ['drop', 'a'], ['drop', 'b'], ['drop', 'b'], ['drop', 'a'],
-      ['drop', 'b'], ['drop', 'z'],
+      ['drop', 'c'], ['drop', 'b'], ['drop', 'c'], ['drop', 'f'],
+      ['drop', 'c'], ['drop', 'b'], ['drop', 'c'], ['drop', 'd'],
+      ['drop', 'c'], ['drop', 'd'], ['drop', 'c'], ['drop', 'f'],
+      ['drop', 'c'], ['drop', 'b'], ['drop', 'd'], ['drop', 'c'],
+      ['drop', 'd'], ['drop', 'z'],
     ],
   },
 
@@ -290,5 +341,5 @@ export function buildChart(level) {
 export const ROADMAP = [
   { layer: 'FIREWALL', id: 'brazilian' },
   { layer: 'PROXY', id: 'acid' },
-  { layer: 'SERVER', id: null }, // boss fight vs QUIETE.SYS
+  { layer: 'SERVER', id: 'server' }, // boss fight vs QUIETE.SYS and the Minister
 ];

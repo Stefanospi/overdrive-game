@@ -2,7 +2,7 @@
 import { settings } from './settings.js';
 import { accuracy, rank } from './rank.js';
 
-export const TOTAL_FRAGMENTS = 5;
+export const TOTAL_FRAGMENTS = 3; // one per chapter: FIREWALL, PROXY, SERVER
 
 export const fragments = () => settings.get('fragments', []);
 

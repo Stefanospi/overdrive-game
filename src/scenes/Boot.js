@@ -6,7 +6,7 @@ import { drawBackdrop, drawLabelStrip, textTexture, buildWindow, button } from '
 import { settings, reducedFx } from '../settings.js';
 import { EP, track } from '../campaign.js';
 import { attachFx } from '../fx.js';
-import { TEXTS } from '../texts.js';
+import { TEXTS, lang, setLang } from '../texts.js';
 import { getCtx, preload } from '../audio.js';
 
 // Title screen: a BIOS boot log, then the title slams in and MARS.EXE shows up.
@@ -38,7 +38,7 @@ export class Boot extends Phaser.Scene {
         .text(px(16), px(18 + i * 17), line, {
           fontFamily: FONT_VT,
           fontSize: px(17) + 'px',
-          color: line.endsWith('NEGATO') ? '#ff2a2a' : '#c0c0c0',
+          color: /NEGATO|DENIED/.test(line) ? '#ff2a2a' : '#c0c0c0',
         })
         .setVisible(false);
       this.time.delayedCall(140 + i * 170, () => t.setVisible(true));
@@ -67,7 +67,7 @@ export class Boot extends Phaser.Scene {
 
     // release line under the subtitle
     const rel = this.add
-      .text(W / 2, px(292), `USCITA ${EP.dateLabel}${EP.indicative ? ' (' + TEXTS.campaign.indicative + ')' : ''}`, {
+      .text(W / 2, px(292), `${TEXTS.campaign.release} ${EP.dateLabel}${EP.indicative ? ' (' + TEXTS.campaign.indicative + ')' : ''}`, {
         fontFamily: FONT_VT,
         fontSize: px(19) + 'px',
         color: '#ff7a7a',
@@ -108,9 +108,9 @@ export class Boot extends Phaser.Scene {
       .setVisible(false);
 
     // small links: calibration, leaderboard, effects
-    const link = (x, label, fn) => {
+    const link = (x, label, fn, y = LH - 46) => {
       const t = this.add
-        .text(x, px(LH - 46), label, { fontFamily: FONT_VT, fontSize: px(19) + 'px', color: '#b8bcc6' })
+        .text(x, px(y), label, { fontFamily: FONT_VT, fontSize: px(19) + 'px', color: '#b8bcc6' })
         .setOrigin(0.5)
         .setDepth(30)
         .setVisible(false)
@@ -134,6 +134,16 @@ export class Boot extends Phaser.Scene {
         settings.set('reduced', !reducedFx());
         links[2].setText(fxLabel());
       }),
+      // the other language: the whole title screen is rebuilt in it
+      link(
+        W / 2,
+        TEXTS.ui.langSwitch,
+        () => {
+          setLang(lang() === 'it' ? 'en' : 'it');
+          this.scene.restart();
+        },
+        LH - 64,
+      ),
     ];
 
     const reveal = 140 + log.length * 170 + 120;
