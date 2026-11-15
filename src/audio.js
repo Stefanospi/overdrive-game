@@ -114,7 +114,9 @@ export function loadTrack(url) {
 // Plays a clip starting at audio-clock time `when`, from `offset` seconds into it.
 // Fade times are positions inside the clip. The track skips the synth's
 // compressor so the master is heard as it was made.
-export function playTrack(buffer, when, offset = 0, { fadeIn = 0, fadeOutAt = Infinity, fadeOut = 1, gain = 0.9, ramp = 0 } = {}) {
+// `stopAt` cuts the clip cleanly at that position; `loop: [from, to]` makes it go round
+// between those two positions once it reaches them (both used by the boss finale).
+export function playTrack(buffer, when, offset = 0, { fadeIn = 0, fadeOutAt = Infinity, fadeOut = 1, gain = 0.9, ramp = 0, stopAt = Infinity, loop = null } = {}) {
   const c = getCtx();
   out();
   const src = c.createBufferSource();
@@ -148,9 +150,31 @@ export function playTrack(buffer, when, offset = 0, { fadeIn = 0, fadeOutAt = In
     g.gain.setValueAtTime(gain, Math.max(when, zero + fadeOutAt));
     g.gain.linearRampToValueAtTime(0.0001, zero + fadeOutAt + fadeOut);
   }
+  if (loop) {
+    src.loop = true;
+    src.loopStart = loop[0];
+    src.loopEnd = loop[1];
+  }
   src.start(when, offset);
+  if (stopAt < buffer.duration) {
+    g.gain.setValueAtTime(gain, zero + stopAt - 0.006);
+    g.gain.linearRampToValueAtTime(0.0001, zero + stopAt);
+    src.stop(zero + stopAt + 0.01);
+  }
 
   return {
+    // fades out and stops (leaving the scene without a click)
+    fade(dur = 0.3) {
+      const t = c.currentTime;
+      g.gain.cancelScheduledValues(t);
+      g.gain.setValueAtTime(Math.max(g.gain.value, 0.0001), t);
+      g.gain.linearRampToValueAtTime(0.0001, t + dur);
+      try {
+        src.stop(t + dur + 0.02);
+      } catch (e) {
+        /* already stopped */
+      }
+    },
     stop() {
       try {
         src.stop();
@@ -180,6 +204,55 @@ export function playTrack(buffer, when, offset = 0, { fadeIn = 0, fadeOutAt = In
       f.frequency.cancelScheduledValues(t);
       f.frequency.setValueAtTime(600, t);
       f.frequency.exponentialRampToValueAtTime(20000, t + 0.45);
+    },
+  };
+}
+
+// Holds a slice of a clip (positions in seconds), going round from audio-clock time `when`
+// until stop(at). The boss finale keeps the last beat of the riser alive this way while
+// the ESEGUI button waits. The slice gets short fades at both ends so the seam is silent.
+export function playLoop(buffer, when, from, to, gain = 0.9) {
+  const c = getCtx();
+  out();
+  const sr = buffer.sampleRate;
+  const a = Math.floor(from * sr);
+  const n = Math.max(1, Math.min(buffer.length - a, Math.round((to - from) * sr)));
+  const slice = c.createBuffer(buffer.numberOfChannels, n, sr);
+  const edge = Math.min(Math.floor(0.006 * sr), n >> 1);
+  for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
+    const d = slice.getChannelData(ch);
+    d.set(buffer.getChannelData(ch).subarray(a, a + n));
+    for (let i = 0; i < edge; i++) {
+      d[i] *= i / edge;
+      d[n - 1 - i] *= i / edge;
+    }
+  }
+  const src = c.createBufferSource();
+  const g = c.createGain();
+  src.buffer = slice;
+  src.loop = true;
+  g.gain.setValueAtTime(gain, when);
+  src.connect(g);
+  g.connect(c.destination);
+  g.connect(analyser);
+  src.start(when);
+  const end = (at) => {
+    try {
+      src.stop(at);
+    } catch (e) {
+      /* already stopped */
+    }
+  };
+  return {
+    // ends exactly at audio-clock time `at`
+    stop(at) {
+      g.gain.setValueAtTime(gain, Math.max(c.currentTime, at - 0.006));
+      g.gain.linearRampToValueAtTime(0.0001, at);
+      end(at + 0.01);
+    },
+    kill() {
+      end(0);
+      g.disconnect();
     },
   };
 }

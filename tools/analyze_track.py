@@ -51,16 +51,19 @@ TRACKS = {
         'lead_bars': 2,
     },
     # TOP ONE (speed house / UK groove, boss of chapter 3): the clip starts on the first
-    # drop, which lands near 1:25 (84.9 s, measured on the sub-bass), and runs 22 bars
+    # drop, which lands near 1:25 (84.9 s, measured on the sub-bass), and runs 27 bars
+    # (to 2:09). The fight is bars 1-19, bar 20 is the break (the ESEGUI charge), and bars
+    # 21-27 are the drop that plays after the tap and under the EP screen. Bar 28 is the
+    # next break, so the clip ends just before it.
     'top-one': {
         'id': 'top-one',
         'source': 'src/music/TOP ONE MASTER V3.wav',
         'bpm': 147.0,
         'from': 84.0,
-        'to': 125.0,
+        'to': 130.0,
         'drop_search': (84.5, 85.5),
         'bars_before_drop': 0,
-        'bars_after_drop': 22,
+        'bars_after_drop': 27,
         'lead_bars': 0,
     },
 }

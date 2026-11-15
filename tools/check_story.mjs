@@ -64,6 +64,15 @@ function check(code, TEXTS, flag) {
     }
   }
   
+  // giant words of the boss fight (events, not bars)
+  const B = TEXTS.boss;
+  for (const w of [...Object.values(B.words).flat(), ...B.phaseDown, B.ko].filter(Boolean)) {
+    const n = words(w);
+    const issues = n > MAX_GIANT ? [`${n} words (max ${MAX_GIANT})`] : [];
+    issues.forEach((m) => flag(`boss.words "${w}"`, m));
+    rows.push([`${code}:boss.words`, 'giant', n, w, issues.join('; ')]);
+  }
+
   for (const [lid, list] of Object.entries(TEXTS.script)) {
     list.forEach((w, i) => {
       const id = `script.${lid}[bar ${w.bar}]`;

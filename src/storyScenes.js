@@ -101,7 +101,14 @@ export class StoryScene {
     }
     this.skyline(g, lit, k === 'city_lit');
 
-    // the neighbourhood soundsystem, left foreground
+    this.soundsystem(g, speaker);
+    this.cable(g, plugGap, spark);
+  }
+
+  // The neighbourhood soundsystem, left foreground. Also drawn on its own by the boss finale.
+  soundsystem(g, speaker) {
+    const t = this.t;
+    const hl = this.hl;
     const sx = 18;
     const sy = hl - 112;
     this.R(g, sx, sy, 78, 112, 0x050304);
@@ -112,8 +119,14 @@ export class StoryScene {
       g.fillStyle(COLORS.red, 0.25 + pulse * 0.6).fillCircle(px(cx), this.y0 + px(cy), px(r * 0.55));
       g.lineStyle(px(2), COLORS.silver, 0.6).strokeCircle(px(cx), this.y0 + px(cy), px(r));
     }
-    // cable to the wall socket; the plug is pulled out in city_off / city_dark
-    g.lineStyle(px(3), 0x44444c, 1).beginPath();
+  }
+
+  // Cable to the wall socket; `plugGap` (logical px) is how far out the plug is.
+  cable(g, plugGap, spark, color = 0x44444c) {
+    const hl = this.hl;
+    const sx = 18;
+    const sy = hl - 112;
+    g.lineStyle(px(3), color, 1).beginPath();
     g.moveTo(px(sx + 78), this.y0 + px(sy + 100));
     g.lineTo(px(260 - plugGap), this.y0 + px(hl - 12));
     g.strokePath();

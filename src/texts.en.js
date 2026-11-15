@@ -237,7 +237,7 @@ export default {
         { who: 'girl', expr: 'happy', text: 'Restore point loaded. Whole city.' },
         { scene: 'city_on', caption: 'CITY, 04:40', sfx: 'crowd', text: 'The soundsystem relights the windows.' },
         { caption: 'STATUS', text: 'Whitelist users: all.' },
-        { who: 'mars', expr: 'win', text: 'Payload delivered. Press EXECUTE.' },
+        { who: 'mars', expr: 'win', text: 'Payload delivered. The bass is free.' },
       ],
     },
     server_mid: {
@@ -248,7 +248,7 @@ export default {
         { who: 'ministro', expr: 'calm', text: 'Decree 139 is valid. By mistake.' },
         { who: 'girl', expr: 'happy', text: 'City restored. Almost all of it.' },
         { caption: 'STATUS', text: 'Whitelist users: many.' },
-        { who: 'mars', expr: 'neutral', text: 'The bass coughs. But it plays. EXECUTE.' },
+        { who: 'mars', expr: 'neutral', text: 'The bass coughs. But it plays.' },
       ],
     },
     server_low: {
@@ -258,7 +258,7 @@ export default {
         { scene: 'monitors', caption: 'SERVER, 04:35', text: 'Detected. But the stamp holds.' },
         { who: 'quiete', expr: 'error', text: "Error 404: can't silence you." },
         { caption: 'STATUS', text: 'Whitelist users: few.' },
-        { who: 'mars', expr: 'neutral', text: 'Enough. The link stays. EXECUTE.' },
+        { who: 'mars', expr: 'neutral', text: 'The link stays. The bass returns.' },
       ],
     },
   },
@@ -284,12 +284,9 @@ export default {
       { bar: 18, expr: 'neutral', word: 'MASK HOLDS' },
       { bar: 26, expr: 'win', word: 'PROXY DOWN' },
     ],
-    // boss: one giant word at the start of each phase (bars 1, 7 and 13 of the clip)
+    // boss: the word of phase 1. The other phases and the events are in `boss.words`.
     server: [
       { bar: 0, expr: 'neutral', word: 'CENSORSHIP' },
-      { bar: 6, expr: 'angry', word: 'DECREE' },
-      { bar: 12, expr: 'shout', word: 'ROOT' },
-      { bar: 21, expr: 'win', word: 'PAYLOAD' },
     ],
     dub: [
       { bar: -1, expr: 'neutral', word: 'SCANNING' },
@@ -331,6 +328,10 @@ export default {
     hit: ['HIT', 'DAMAGE', 'CRITICAL'],
     phaseDown: ['QUIETE.SYS DOWN', 'MINISTER DOWN', 'FUSION DOWN'],
     ko: 'TOTAL ROOT',
+    // giant words tied to events (max 2 words)
+    words: { riff: 'RIFF', drop: 'DROP', root: 'ROOT', stun: 'BREAK', backup: 'BACKUP', stamp: 'STAMP', phase: ['', 'DECREE', 'FUSION'], exec: 'EXECUTE', loading: 'LOADING', tap: 'TAP', ko: 'KO' },
+    // the EP screen after ESEGUI
+    ep: { title: 'OVERDRIVE EP', cover: 'COVER COMING SOON', next: 'CONTINUE' },
   },
   overdrive: ['THRESHOLD EXCEEDED'],
   overdriveMode: ['ROOT ACCESS'],

@@ -29,3 +29,13 @@ export function recordResult(result) {
 }
 
 export const bestOf = (level) => settings.get('best', {})[level] || null;
+
+// How a district stands after its level, from the best run kept on this device:
+// 'high' = lit, 'mid' = unstable, 'low' = off (also when the level was never finished).
+// Same rule as rank.js.
+export function districtState(level) {
+  const b = bestOf(level);
+  if (!b) return 'low';
+  if (b.odPeak >= 100 || b.acc >= 0.85) return 'high';
+  return b.acc >= 0.5 ? 'mid' : 'low';
+}
