@@ -727,15 +727,19 @@ export class Play extends Phaser.Scene {
     if (kind === 'forge') {
       this.forgeUntil = this.songBeat() + 16;
       this.flash = 0.4;
-      this.helperSay(TEXTS.forger.forge, 'wink', 1300, 'grafico');
-      this.time.delayedCall(1400, () => !this.over && this.flashWord(TEXTS.forger.double, 900));
+      if (this.show) this.show.cutIn('grafico', TEXTS.boss.words.stamp); // GABRIEL TIMBRO
+      else {
+        this.helperSay(TEXTS.forger.forge, 'wink', 1300, 'grafico');
+        this.time.delayedCall(1400, () => !this.over && this.flashWord(TEXTS.forger.double, 900));
+      }
       track('backup_used', { kind });
       return;
     }
     this.shieldUntil = this.songBeat() + 8;
     if (kind === 'rewind' && this.buffer) {
       this.rewindTrack();
-      this.helperSay(T.rewind, 'wink', 1300);
+      if (this.show) this.show.cutIn('girl', TEXTS.boss.words.backup);
+      else this.helperSay(T.rewind, 'wink', 1300);
       track('backup_used', { kind });
       return;
     }
@@ -753,8 +757,11 @@ export class Play extends Phaser.Scene {
       this.flash = 0.5;
     }
     this.missRun = 0;
-    this.helperSay(kind === 'rewind' ? T.rewind : T.gift, 'wink', 1300);
-    this.time.delayedCall(1400, () => !this.over && this.flashWord(T.shield, 900));
+    if (this.show) this.show.cutIn('girl', TEXTS.boss.words.backup); // ADRIANA BACKUP
+    else {
+      this.helperSay(kind === 'rewind' ? T.rewind : T.gift, 'wink', 1300);
+      this.time.delayedCall(1400, () => !this.over && this.flashWord(T.shield, 900));
+    }
     track('backup_used', { kind });
   }
 

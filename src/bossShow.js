@@ -36,6 +36,7 @@ export class BossShow {
     this.wasStunned = false;
     this.vis = 0; // visual clock in seconds: it stops during a freeze
     this.buildGiant();
+    this.buildCutIn();
   }
 
   // ---- stage A: combo attacks ---------------------------------------------------
@@ -58,7 +59,8 @@ export class BossShow {
     const tier = T.tiers[i];
     s.takeBoss(s.boss.phase, tier.dmg, n, true);
     this.attacks[i].t = 0;
-    s.flashWord(TEXTS.boss.words[tier.key], 800, 2);
+    if (i === 2) this.cutIn('mars', TEXTS.boss.words.root); // MARS ROOT
+    else s.flashWord(TEXTS.boss.words[tier.key], 800, 2);
     s.cameras.main.shake(120 + i * 110, 0.006 + i * 0.005);
     if (i === 2) s.flash = 1;
     if (!this.reduced) this.freeze = Math.max(this.freeze, T.hitstop);
@@ -271,6 +273,50 @@ export class BossShow {
       }
       g.fillStyle(c.color, Math.min(1, c.life * 2)).fillRect(c.x - c.size / 2, c.y - c.size / 2, c.size, c.size);
     }
+  }
+
+  // ---- stage D: crew cut-ins ----------------------------------------------------------
+  // A super move: a slanted band with the portrait cuts across the speakers for 0.6 s while
+  // the giant word says what it is. Purely visual; the power itself is the one Play already
+  // has (shield, rewind, ID FALSA, root). The band is built once and reused.
+  buildCutIn() {
+    const s = this.s;
+    const h = px(58);
+    const lean = px(26);
+    const g = s.add.graphics();
+    g.fillStyle(0x000000, 0.9);
+    g.beginPath();
+    g.moveTo(lean, -h / 2);
+    g.lineTo(W + lean, -h / 2);
+    g.lineTo(W - lean, h / 2);
+    g.lineTo(-lean, h / 2);
+    g.closePath();
+    g.fillPath();
+    g.lineStyle(px(3), COLORS.red, 1).lineBetween(lean, -h / 2, W + lean, -h / 2).lineBetween(-lean, h / 2, W - lean, h / 2);
+    g.lineStyle(px(1), 0xffffff, 0.5);
+    for (let i = 0; i < 7; i++) g.lineBetween(rnd(i + 5) * W, -h / 2 + px(6 + i * 7), rnd(i + 5) * W + px(40 + rnd(i) * 90), -h / 2 + px(6 + i * 7));
+    this.cutFace = s.add.image(0, px(4), 'mars-shout').setOrigin(0.5).setScale(K * 3).setCrop(0, 0, 36, 26);
+    this.cut = s.add.container(0, px(s.stackBottom - 96), [g, this.cutFace]).setDepth(9.7).setVisible(false);
+  }
+
+  cutIn(who, word) {
+    const s = this.s;
+    s.killPopup();
+    s.flashWord(word, 800, 3);
+    if (s.badge) return; // the badge owns that spot: the word alone is enough
+    const side = who === 'grafico' ? 1 : -1; // Gabriel comes in from the right
+    this.cutFace.setTexture({ girl: 'girl-wink', grafico: 'grafico-wink', mars: 'mars-shout' }[who]).setCrop(0, 0, 36, 26);
+    this.cutFace.setX(CX + side * px(120)).setFlipX(side > 0);
+    const c = this.cut.setVisible(true);
+    s.tweens.killTweensOf(c);
+    if (this.reduced) {
+      c.setX(0).setAlpha(0);
+      s.tweens.add({ targets: c, alpha: 1, duration: 150 });
+    } else {
+      c.setX(side * W).setAlpha(1);
+      s.tweens.add({ targets: c, x: 0, duration: 110, ease: 'Cubic.Out' });
+    }
+    s.tweens.add({ targets: c, alpha: 0, delay: 600, duration: 140, onComplete: () => c.setVisible(false) });
   }
 
   // ---- frame ---------------------------------------------------------------------

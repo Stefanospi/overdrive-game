@@ -332,7 +332,7 @@ export default {
     phaseDown: ['QUIETE.SYS DOWN', 'MINISTER DOWN', 'FUSION DOWN'],
     ko: 'TOTAL ROOT',
     // giant words tied to events (max 2 words)
-    words: { riff: 'RIFF', drop: 'DROP', root: 'ROOT', stun: 'BREAK' },
+    words: { riff: 'RIFF', drop: 'DROP', root: 'ROOT', stun: 'BREAK', backup: 'BACKUP', stamp: 'STAMP' },
   },
   overdrive: ['THRESHOLD EXCEEDED'],
   overdriveMode: ['ROOT ACCESS'],
