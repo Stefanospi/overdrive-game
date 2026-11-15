@@ -1097,6 +1097,7 @@ export class Play extends Phaser.Scene {
     const h = px(7);
     const gap = px(4);
     this.show.drawGuard(g, x0, px(115), W - px(8) - x0, px(3));
+    this.show.drawDistrictIcons(g, W - px(8) - this.bossHp.width - px(36), px(96));
     const total = B.segs.reduce((sum, s) => sum + s.cap, 0);
     const room = W - px(8) - x0 - gap * (B.segs.length - 1);
     let x = x0;

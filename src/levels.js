@@ -166,6 +166,9 @@ export const LEVELS = {
       faces: ['quiete-smile', 'ministro-calm', 'fusion-idle'],
       // the giant behind the highway in each phase (sprites `<who>-*` from tools/make_sprites.py)
       giant: ['quiete', 'ministro', 'fusion'],
+      // the districts that help: district i fires its charge soon after phase i + 1 starts,
+      // as strong as that level went (progress.js districtState)
+      districts: ['brazilian', 'acid'],
       // black bars over a lane: the far part of the highway is hidden, notes show up late.
       // { from, to } in beats from bar 1.
       censor: [

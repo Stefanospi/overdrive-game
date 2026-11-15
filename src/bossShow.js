@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { W, K, px, COLORS, FONT_PS } from './config.js';
+import { W, K, px, COLORS, FONT_PS, PARAMS } from './config.js';
+import { districtState } from './progress.js';
 import { SPRITES, PALETTE, SPRITE_W, SPRITE_H } from './sprites.js';
 import { TEXTS } from './texts.js';
 import { BOSS_TUNING as T } from './bossTuning.js';
@@ -37,6 +38,7 @@ export class BossShow {
     this.vis = 0; // visual clock in seconds: it stops during a freeze
     this.buildGiant();
     this.buildCutIn();
+    this.buildDistricts();
   }
 
   // ---- stage A: combo attacks ---------------------------------------------------
@@ -319,6 +321,94 @@ export class BossShow {
     s.tweens.add({ targets: c, alpha: 0, delay: 600, duration: 140, onComplete: () => c.setVisible(false) });
   }
 
+  // ---- stage E: the districts help -----------------------------------------------------
+  // The districts lit in levels 1 and 2 fire one charge each: district 1 (Firewall) soon
+  // after phase 2 starts, district 2 (Proxy) after phase 3. Its soundsystem comes up beside
+  // the stack for about a second and shoots. Lit = full power, unstable = half, off = none.
+  buildDistricts() {
+    const s = this.s;
+    const forced = (PARAMS.get('districts') || '').split(',');
+    this.districts = s.level.boss.districts.map((level, i) => {
+      const state = ['high', 'mid', 'low'].includes(forced[i]) ? forced[i] : districtState(level);
+      return { state, power: T.districtPower[state], at: s.level.boss.starts[i + 1] + T.districtDelay, done: false, t: 9, side: i ? 1 : -1, hit: false };
+    });
+    this.back = s.add.graphics().setDepth(-5.5);
+  }
+
+  // Two skyline icons in the boss strip: lit, flickering or dark.
+  drawDistrictIcons(g, x, y) {
+    this.districts.forEach((d, i) => {
+      const on = d.state === 'high' || (d.state === 'mid' && rnd(Math.floor(this.s.time.now / 110) + i * 7) > 0.45);
+      g.fillStyle(on ? COLORS.red : COLORS.grey, d.done ? 0.45 : 1);
+      const x0 = x + i * px(15);
+      [5, 8, 6].forEach((h, k) => g.fillRect(x0 + k * px(4), y + px(8 - h), px(3), px(h)));
+    });
+  }
+
+  updateDistricts(sb, vdt) {
+    const s = this.s;
+    const g = this.back.clear();
+    for (const d of this.districts) {
+      if (!d.done && sb >= d.at && !s.rew) {
+        d.done = true;
+        if (d.power > 0 && sb < d.at + 4) {
+          d.t = 0;
+          d.hit = false;
+          s.flashWord(TEXTS.hub.layers[this.districts.indexOf(d)], 900, 3);
+        }
+      }
+      if (d.t >= 1.3) continue;
+      d.t += vdt;
+      const p = d.t;
+      // the soundsystem rises beside the stack, plays, and goes back down
+      const up = Phaser.Math.Clamp(p / 0.25, 0, 1) * Phaser.Math.Clamp((1.3 - p) / 0.25, 0, 1);
+      const bw = px(46);
+      const bh = px(70);
+      const x = d.side < 0 ? px(6) : W - px(6) - bw;
+      const y = px(s.stackBottom) - bh * up;
+      g.fillStyle(0x050304, 1).fillRect(x, y, bw, bh);
+      g.lineStyle(px(2), COLORS.silver, 0.6).strokeRect(x, y, bw, bh);
+      const pulse = 0.5 + 0.5 * Math.sin(this.vis * 30);
+      for (const [cy, r] of [[20, 12], [50, 15]]) {
+        g.fillStyle(0x1a0c10, 1).fillCircle(x + bw / 2, y + px(cy), px(r));
+        g.fillStyle(COLORS.red, 0.3 + 0.7 * pulse * d.power).fillCircle(x + bw / 2, y + px(cy), px(r * 0.55));
+      }
+      // windows of the district light up above it
+      for (let k = 0; k < 12; k++) {
+        if (rnd(k + d.side * 5) > up * d.power) continue;
+        g.fillStyle(COLORS.red, 0.9).fillRect(x + px(4 + (k % 4) * 10), y - px(12 + Math.floor(k / 4) * 10), px(5), px(6));
+      }
+      if (p >= 0.55 && !d.hit) {
+        d.hit = true;
+        s.takeBoss(s.boss.phase, T.districtDmg * d.power, null, true);
+        s.cameras.main.shake(180, 0.008);
+        if (!this.reduced) this.freeze = Math.max(this.freeze, T.hitstop);
+      }
+      // the shot: Firewall sends a bass wave, Proxy an acid beam (a zigzag)
+      const q = Phaser.Math.Clamp((p - 0.4) / 0.4, 0, 1);
+      if (q <= 0 || q >= 1) continue;
+      const to = this.aim();
+      const fx = x + bw / 2;
+      const fy = y + px(35);
+      const a = this.g;
+      if (d.side < 0) {
+        for (let k = 0; k < 4; k++) {
+          const r = Phaser.Math.Clamp(q * 1.3 - k * 0.1, 0, 1);
+          if (r <= 0 || r >= 1) continue;
+          a.lineStyle(px(4), k % 2 ? 0xffffff : COLORS.red, (1 - r) * d.power);
+          a.strokeCircle(fx + (to.x - fx) * r, fy + (to.y - fy) * r, px(14 + 40 * r));
+        }
+      } else {
+        a.lineStyle(px(5), COLORS.red, (1 - q) * d.power);
+        a.beginPath();
+        a.moveTo(fx, fy);
+        for (let k = 1; k <= 10; k++) a.lineTo(fx + ((to.x - fx) * k) / 10, fy + ((to.y - fy) * k) / 10 + (k % 2 ? -1 : 1) * px(12) * (k < 10 ? 1 : 0));
+        a.strokePath();
+        a.lineStyle(px(2), 0xffffff, (1 - q) * d.power).lineBetween(fx, fy, to.x, to.y);
+      }
+    }
+  }
+
   // ---- frame ---------------------------------------------------------------------
   update(sb, dt) {
     const frozen = this.freeze > 0;
@@ -337,6 +427,7 @@ export class BossShow {
     this.drawCubes(vdt);
     this.drawAttacks(vdt);
     this.drawCounter(sb);
+    this.updateDistricts(sb, vdt);
   }
 
   drawAttacks(vdt) {
@@ -411,6 +502,7 @@ export class BossShow {
   destroy() {
     this.g.destroy();
     this.holesG.destroy();
+    this.back.destroy();
     this.cubesG.destroy();
     this.dark.destroy();
   }

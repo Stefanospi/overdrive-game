@@ -38,4 +38,5 @@ export const FONT_VT = 'VT323, monospace';
 //   auto            a bot plays every note
 //   seek=<beats>    start the level from that beat
 //   offset=<ms>     extra audio/visual latency compensation
+//   districts=a,b   boss: state of the two districts (high|mid|low), instead of the saved progress
 export const PARAMS = new URLSearchParams(window.location.search);
