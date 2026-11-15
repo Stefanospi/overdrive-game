@@ -9,6 +9,8 @@ import { EP, track } from '../campaign.js';
 import { LEVELS, FIRST_LEVEL, COUNT_IN, buildChart } from '../levels.js';
 import { rank } from '../rank.js';
 import * as A from '../audio.js';
+import { BOSS_TUNING } from '../bossTuning.js';
+import { BossShow } from '../bossShow.js';
 
 // Lane rhythm game: notes leave the soundsystem at the top and travel down a
 // perspective highway to the hit line. One scene plays any level in levels.js.
@@ -35,8 +37,10 @@ const REWIND_PRE = 2; // beats of run-up before the first replayed note
 const REWIND_PAUSE = 0.35; // seconds of silence before the track restarts
 const REWIND_ANIM = 1.2; // seconds the tape takes to wind back
 const LANE_COLORS = [COLORS.red, COLORS.paper, COLORS.red];
-const GRADE_WEIGHT = { perfect: 1, good: 0.7, ok: 0.4 }; // same weights as the accuracy in rank.js
-const COMBO_DMG = (combo) => 0.9 + Math.min(combo, 40) * 0.0275; // boss damage: x0.9 with no combo, x2 from combo 40
+const GRADE_WEIGHT = BOSS_TUNING.grade;
+// boss damage: x0.9 with no combo, x2 from combo 40 (numbers in bossTuning.js)
+const COMBO_DMG = (combo) =>
+  BOSS_TUNING.comboMin + (Math.min(combo, BOSS_TUNING.comboFull) / BOSS_TUNING.comboFull) * (BOSS_TUNING.comboMax - BOSS_TUNING.comboMin);
 const FIGHTER_IDLE = { quiete: ['quiete-smile', 'quiete-smile', 'quiete-error'], ministro: ['ministro-calm', 'ministro-calm', 'ministro-angry'] };
 const CENSOR_S = 0.55; // a censored lane hides everything farther than this scale (about 1.2 beats out)
 const JUDGE_COLORS = { perfect: '#ffffff', good: '#ff2a2a', ok: '#c0c0c0', miss: '#b8121a', broken: '#b8121a' };
@@ -83,6 +87,15 @@ export class Play extends Phaser.Scene {
     this.span = (this.hitY - this.stackBottom) / (1 - S_FAR); // notes appear right under the stack
     this.horizon = this.hitY - this.span; // vanishing point
     this.sNear = (LH - this.horizon) / this.span; // scale at the bottom edge
+    this.sFar = S_FAR;
+    // the two bass cones of the stack (logical px): the boss attacks leave from here
+    this.coneY = STACK_TOP + 152 * this.stackScale;
+    this.coneDx = (230 * this.stackScale) / 4;
+  }
+
+  // x of the line between lane k - 1 and lane k, at scale s
+  laneEdge(k, s) {
+    return CX + (k - this.level.lanes / 2) * px(LANE_W) * s;
   }
 
   yOf(s) {
@@ -160,6 +173,7 @@ export class Play extends Phaser.Scene {
     this.rootDone = false;
     this.boss = L.boss ? this.initBoss() : null;
     this.buildBossHud();
+    this.show = this.boss ? new BossShow(this) : null;
     this.badge = null;
     this.giftDone = false;
     track('level_start', { level: L.id });
@@ -193,6 +207,7 @@ export class Play extends Phaser.Scene {
       this.input.keyboard.on('keyup-' + key, () => this.release(l));
     }
     this.events.once('shutdown', () => {
+      if (this.show) this.show.destroy();
       this.stopSubs();
       if (this.track) this.track.stop();
     });
@@ -382,6 +397,7 @@ export class Play extends Phaser.Scene {
     this.addScore(g.points);
     this.addOd(g.od);
     if (this.boss) this.damageBoss(n, g.key);
+    if (this.show) this.show.onHit(n);
     if (n.len > 0) {
       n.st = 'hold';
       this.held[n.lane] = n;
@@ -404,7 +420,7 @@ export class Play extends Phaser.Scene {
     this.tweens.killTweensOf(this.comboText);
     this.comboText.setScale(1.3);
     this.tweens.add({ targets: this.comboText, scale: 1, duration: 120 });
-    if ([10, 25, 50, 75, 100].includes(this.combo)) this.react('combo', 'win');
+    if (!this.boss && [10, 25, 50, 75, 100].includes(this.combo)) this.react('combo', 'win');
     n.pts = (n.pts || 0) + (this.score - s0);
     n.odd = (n.odd || 0) + (this.od - o0);
   }
@@ -429,6 +445,7 @@ export class Play extends Phaser.Scene {
       this.burst(this.laneX(n.lane, 1), px(this.hitY), 0xffffff, 10);
     } else {
       n.st = 'broken';
+      this.failLane = n.lane;
       this.fail('broken', -3);
     }
   }
@@ -443,6 +460,7 @@ export class Play extends Phaser.Scene {
     if (n.cb === undefined) n.cb = this.combo;
     const o0 = this.od;
     this.counts.miss++;
+    this.failLane = n.lane;
     this.fail('miss', MISS_OD);
     n.odd = (n.odd || 0) + (this.od - o0);
   }
@@ -459,6 +477,7 @@ export class Play extends Phaser.Scene {
   fail(key, od) {
     if (this.shielded()) return;
     if (this.boss) this.bossAttack();
+    if (this.show) this.show.onBreak(this.combo, this.failLane || 0);
     if (this.combo >= 8) this.react('miss', Math.random() < 0.5 ? 'sad' : 'angry');
     // remember what this streak of misses costs: the rewind bonus gives it back
     if (!this.missRun) this.streak = { combo: this.combo, od: 0 };
@@ -538,8 +557,18 @@ export class Play extends Phaser.Scene {
   }
 
   // Giant word with a dark strip behind it: readable at a glance, never a sentence.
-  flashWord(word, ms = 1100) {
-    this.wordUntil = this.time.now + ms;
+  // One word at a time. `prio`: a word never cuts a more important one that is still up;
+  // it waits its turn instead (one slot, dropped if it gets stale).
+  //   1 reactions and script   2 combo attacks   3 stun, cut-ins   4 phase changes   5 finale
+  flashWord(word, ms = 1100, prio = 1) {
+    const now = this.time.now;
+    if (now < (this.wordUntil || 0) - 200 && prio < (this.wordPrio || 0)) {
+      if (!this.wordNext || prio >= this.wordNext.prio) this.wordNext = { word, ms, prio, by: now + 1600 };
+      return;
+    }
+    this.wordNext = null;
+    this.wordPrio = prio;
+    this.wordUntil = now + ms;
     if (this.popup) this.popup.setAlpha(0.2); // the word has priority over any old-style window
     const t = this.wordText;
     this.tweens.killTweensOf([t, this.wordBar]);
@@ -838,7 +867,8 @@ export class Play extends Phaser.Scene {
   }
 
   burst(x, y, color, n, power = 1) {
-    for (let i = 0; i < n && this.parts.length < 260; i++) {
+    const cap = this.boss ? 60 : 260; // the boss level has its own particles: keep the total low
+    for (let i = 0; i < n && this.parts.length < cap; i++) {
       const a = -Math.PI / 2 + (Math.random() - 0.5) * 2.2;
       const v = px(140 + Math.random() * 320) * power;
       const life = 0.3 + Math.random() * 0.4;
@@ -975,16 +1005,23 @@ export class Play extends Phaser.Scene {
   }
 
   damageBoss(n, key) {
-    const B = this.boss;
     const i = this.bossAt(n.b);
-    const seg = B.segs[i];
-    if (seg.hp <= 0) return;
+    const seg = this.boss.segs[i];
     const combo = COMBO_DMG(this.combo);
-    const mult = (this.odMode ? 2 : 1) * (this.forged() ? 1.5 : 1) * combo;
-    const dmg = ((GRADE_WEIGHT[key] || 0.4) / seg.n) * (seg.cap / this.level.boss.base) * mult;
+    const mult = (this.odMode ? BOSS_TUNING.rootDmg : 1) * (this.forged() ? BOSS_TUNING.forgeDmg : 1) * combo;
+    const dmg = ((GRADE_WEIGHT[key] || 0.4) / seg.n) * (seg.cap / BOSS_TUNING.base) * mult;
+    this.takeBoss(i, dmg, n, combo >= 1.5);
+  }
+
+  // Takes `dmg` (1 = the whole boss) from the segment of phase i. `n` is the note that
+  // caused it: a rewind of that note gives the damage back.
+  takeBoss(i, dmg, n, strong) {
+    const B = this.boss;
+    const seg = B.segs[i];
+    if (seg.hp <= 0 || dmg <= 0) return 0;
     const taken = Math.min(seg.hp, dmg);
     seg.hp = seg.hp - taken < 0.0005 ? 0 : seg.hp - taken;
-    n.bd = (n.bd || 0) + taken;
+    if (n) n.bd = (n.bd || 0) + taken;
     B.flash = 1;
     B.shake = 1;
     // the fighters of that phase flinch, and the damage pops out of them
@@ -992,19 +1029,21 @@ export class Play extends Phaser.Scene {
     for (const f of this.fighters) {
       if (!this.level.boss.fighters[i].includes(f.who)) continue;
       f.hurtAt = now;
-      this.showDamage(f, taken, combo >= 1.5);
+      this.showDamage(f, taken, strong);
     }
     if (seg.hp === 0) this.bossDown(i);
+    return taken;
   }
 
   bossDown(i) {
     const T = TEXTS.boss;
-    const dead = this.bossLeft() === 0;
-    this.flash = dead ? 1 : 0.6;
-    this.cameras.main.shake(dead ? 420 : 260, dead ? 0.016 : 0.01);
-    this.say(dead ? T.ko : T.phaseDown[i], 'win', dead ? 1700 : 1200);
-    if (navigator.vibrate) navigator.vibrate(dead ? [30, 40, 30, 40, 80] : [30, 30, 30]);
-    track('boss_phase_down', { phase: i, dead });
+    // the boss cannot die here: an empty segment leaves it on its knees until ESEGUI
+    this.flash = 0.6;
+    this.cameras.main.shake(260, 0.01);
+    this.setMars('win');
+    this.flashWord(T.phaseDown[i], 1200, 3);
+    if (navigator.vibrate) navigator.vibrate([30, 30, 30]);
+    track('boss_phase_down', { phase: i });
   }
 
   // Phase changes: the name, the face and the percentage in the strip under the HUD.
@@ -1260,6 +1299,11 @@ export class Play extends Phaser.Scene {
     this.typeR.tilePositionX += speed;
     this.ticker.tilePositionX += 0.05 * delta * K;
 
+    if (this.wordNext && time >= (this.wordUntil || 0)) {
+      const q = this.wordNext;
+      this.wordNext = null;
+      if (time < q.by) this.flashWord(q.word, q.ms, q.prio);
+    }
     this.drawBadge();
     this.drawShield(sb);
     if (!this.giftDone && L.giftBeat !== undefined && sb >= L.giftBeat && !this.badge && !this.over) {
@@ -1281,6 +1325,7 @@ export class Play extends Phaser.Scene {
       }
     }
     if (this.boss) this.updateBoss(dt);
+    if (this.show) this.show.update(sb, dt);
     if (!this.forgeDone && L.forgeBeat !== undefined && sb >= L.forgeBeat && !this.badge && !this.over) {
       this.forgeDone = true;
       this.spawnBadge('forge');

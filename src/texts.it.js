@@ -332,6 +332,8 @@ export default {
     hit: ['COLPITO', 'DANNO', 'CRITICO'],
     phaseDown: ['QUIETE.SYS GIÙ', 'MINISTRO GIÙ', 'FUSIONE GIÙ'],
     ko: 'ROOT TOTALE',
+    // giant words tied to events (max 2 words)
+    words: { riff: 'RIFF', drop: 'DROP', root: 'ROOT' },
   },
   overdrive: ['SOGLIA SUPERATA'],
   overdriveMode: ['ACCESSO ROOT'],

@@ -331,6 +331,8 @@ export default {
     hit: ['HIT', 'DAMAGE', 'CRITICAL'],
     phaseDown: ['QUIETE.SYS DOWN', 'MINISTER DOWN', 'FUSION DOWN'],
     ko: 'TOTAL ROOT',
+    // giant words tied to events (max 2 words)
+    words: { riff: 'RIFF', drop: 'DROP', root: 'ROOT' },
   },
   overdrive: ['THRESHOLD EXCEEDED'],
   overdriveMode: ['ROOT ACCESS'],
