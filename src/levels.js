@@ -46,44 +46,54 @@ const DUB_PATTERNS = {
   z: ['x...............', 'x...............', 'x...............'],
 };
 
-// BRAZILIAN DUB, 0:27 to 1:08 of the track: 6 playable bars of build-up, then 16
-// of drop. Written by hand on top of what tools/analyze_track.py measured:
-//   build        stabs on steps 0 and 8, answered on 13 and 15
-//   drop, part 1 sub-bass held for half a bar, hits on 5, 8, 12-13
-//   drop, part 2 the kick switches to a 3-3-2 pattern (steps 0, 3, 6)
+// BRAZILIAN DUB, 0:27 to 1:08 of the track: 6 playable bars of build-up, then 16 of drop.
+// The drop is charted on what is heard (tools: spectrogram + per-band analysis of the clip):
+//   lane 1  the dubstep synth stabs (strongest ones, never two lanes on one step)
+//   lane 2  the dubstep bass: a hold for every sustained bass block (0-7, 8-15, 12-15 ...)
+//   lane 0  kick thumps, only where the bass is silent
+// Grid checked: onsets sit within a few ms of the 16th grid, so timing problems are not
+// in the clip timing. m1..m13 were drafted from the signal and still need an ear check.
 const BRAZILIAN_PATTERNS = {
-  //    lane 0 (low)        lane 1 (mid)          lane 2 (bass / answers)
+  //    lane 0 (kick)       lane 1 (synth stabs)   lane 2 (bass holds)
   b1: ['x...............', '........x.......', '................'],
   b2: ['x...............', '........x.......', '.............x..'],
   b3: ['x...............', '........x.......', '.............x.x'],
   b4: ['............x...', 'x.......x.......', '..............x.'],
-  d1: ['............x...', '.....x..x....x..', 'h-------........'],
-  d2: ['x..x....x...x...', '.....x.......x..', '................'],
-  f1: ['........x...x...', '..........x...x.', 'h-------........'],
-  f2: ['x.......x...x...', '....x.....x...x.', '................'],
-  t1: ['x..x..x.....x...', '........x.....x.', '................'],
-  t2: ['x..x..x...x.x...', '........x.....x.', '................'],
-  br: ['..........x...x.', '............x...', 'h---------......'],
+  m1: ['................', '..x...x.x.......', 'h-------....h---'],
+  m2: ['................', '..x...x.x...x...', 'h------.........'],
+  m3: ['................', '..x...x.x.....x.', 'h-------....h---'],
+  m4: ['................', '..x...x...x..x..', 'h-------h-------'],
+  m5: ['................', 'x.....x.x.....x.', '...h----....h---'],
+  m6: ['................', 'x.x...x.x.......', '................'],
+  m7: ['................', '..x...x......x..', 'h-------h-------'],
+  m8: ['................', '..x...x.x...x...', 'h-------........'],
+  m9: ['...x............', 'x....x..x...x...', '................'],
+  m10: ['...x..........x.', 'x....x..x...x...', '................'],
+  m11: ['................', '..........x.x.x.', 'h-------h-------'],
+  m12: ['..........x..x..', 'x.x...x.x.......', '................'],
+  m13: ['................', '...x..x...x.x...', 'h-------h-------'],
   z: ['x..x..x.........', '........x.......', '................'],
 };
 
-// ACID (techno), 2:50 to 3:45 of the track: 6 playable bars of build-up, then 22 of
-// drop. Deliberately easy: lane 0 is the kick (mostly one per beat), lane 1 only answers on
-// the offbeats after beats 2 and 4, lane 2 is a single hold, and the lanes never stack.
+// ACID (techno), 2:50 to 3:45 of the track: 6 playable bars of build-up, then 22 of drop.
+// Read from the spectrogram: from the drop a straight kick lands on every beat (steps 0, 4,
+// 8, 12) and the acid bass answers on the off-beats (steps 2, 6, 10, 14).
+//   a  the kick alone                                  (calm bars)
+//   b  the kick, plus the off-beat on steps 6 and 14   (the groove)
+//   f  fill: kick on 1 and 3, the off-beat on all four (phrase ends, bars 13 and 21 of the clip)
+// Easy on purpose: one note per beat at most, and the two lanes never share a step.
 const ACID_PATTERNS = {
-  //    lane 0 (kick)       lane 1 (offbeat acid)  lane 2 (sub holds)
+  //    lane 0 (kick)       lane 1 (off-beat acid)  lane 2 (unused)
   b1: ['x...............', '................', '................'],
   b2: ['x.......x.......', '................', '................'],
   b3: ['x...x...x...x...', '................', '................'],
   b4: ['x...x...x...x...', '................', '................'],
   b5: ['x...x...x...x...', '..............x.', '................'],
   b6: ['x...x...x...x...', '................', '................'],
-  d1: ['x...x...x...x...', '................', '................'],
-  d2: ['x.......x.......', '......x.......x.', '................'],
-  d3: ['x...x...x...x...', '......x.......x.', '................'],
-  d4: ['x...............', '................', '....h-------....'],
-  f1: ['x...x...x...x...', '............x.x.', '................'],
-  z: ['x...............', 'x...............', 'x...............'],
+  a: ['x...x...x...x...', '................', '................'],
+  b: ['x...x...x...x...', '......x.......x.', '................'],
+  f: ['x.......x.......', '..x...x...x...x.', '................'],
+  z: ['x...............', '................', '................'],
 };
 
 // TOP ONE: the boss fight of chapter 3 (SERVER, QUIETE.SYS and the Minister). Speed house /
@@ -145,12 +155,12 @@ export const LEVELS = {
     patterns: ACID_PATTERNS,
     bars: [
       ['build', 'b1'], ['build', 'b2'], ['build', 'b3'], ['build', 'b4'], ['build', 'b5'], ['build', 'b6'],
-      ['drop', 'd1'], ['drop', 'd2'], ['drop', 'd1'], ['drop', 'd3'],
-      ['drop', 'd2'], ['drop', 'd4'], ['drop', 'd2'], ['drop', 'f1'],
-      ['drop', 'd1'], ['drop', 'd2'], ['drop', 'd3'], ['drop', 'd4'],
-      ['drop', 'd2'], ['drop', 'd3'], ['drop', 'd2'], ['drop', 'f1'],
-      ['drop', 'd4'], ['drop', 'd2'], ['drop', 'd3'], ['drop', 'd1'],
-      ['drop', 'd2'], ['drop', 'z'],
+      ['drop', 'a'], ['drop', 'a'], ['drop', 'b'], ['drop', 'a'],
+      ['drop', 'b'], ['drop', 'a'], ['drop', 'b'], ['drop', 'f'],
+      ['drop', 'a'], ['drop', 'b'], ['drop', 'a'], ['drop', 'b'],
+      ['drop', 'a'], ['drop', 'b'], ['drop', 'b'], ['drop', 'f'],
+      ['drop', 'a'], ['drop', 'b'], ['drop', 'b'], ['drop', 'a'],
+      ['drop', 'b'], ['drop', 'z'],
     ],
   },
 
@@ -173,10 +183,10 @@ export const LEVELS = {
     patterns: BRAZILIAN_PATTERNS,
     bars: [
       ['build', 'b1'], ['build', 'b2'], ['build', 'b3'], ['build', 'b3'], ['build', 'b3'], ['build', 'b4'],
-      ['drop', 'd1'], ['drop', 'd2'], ['drop', 'd1'], ['drop', 'f1'],
-      ['drop', 'd1'], ['drop', 'd2'], ['drop', 'd1'], ['drop', 'f2'],
-      ['drop', 't1'], ['drop', 't2'], ['drop', 't1'], ['drop', 'br'],
-      ['drop', 't1'], ['drop', 't2'], ['drop', 't1'], ['drop', 'z'],
+      ['drop', 'm1'], ['drop', 'm2'], ['drop', 'm3'], ['drop', 'm4'],
+      ['drop', 'm5'], ['drop', 'm6'], ['drop', 'm7'], ['drop', 'm8'],
+      ['drop', 'm9'], ['drop', 'm10'], ['drop', 'm10'], ['drop', 'm11'],
+      ['drop', 'm7'], ['drop', 'm12'], ['drop', 'm7'], ['drop', 'z'],
     ],
   },
 
