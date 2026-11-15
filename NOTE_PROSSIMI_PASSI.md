@@ -12,7 +12,8 @@ Aggiornato dopo i test di gioco di Stefano. Il contesto generale sta in `CLAUDE.
   - Cause trovate: 105 note (contro le 151 di ACID, ma molto più sparse e sincopate); stab del synth sugli step 2, 6, 8 a 2 step di distanza e **in contemporanea a una nota lunga** (si tiene la corsia 2 e si tocca la 1); calci in corsia 0 sugli step 3, 10, 12 dove nel segnale non c'è un kick netto (suonavano a caso).
   - Correzioni: 72 note; mai un tap mentre una nota lunga è premuta (la nota lunga è il ritmo); solo gli stab forti; in corsia 0 resta qualche colpo del sub (step 3, 10); minimo 2 step tra due tap.
   - Se ancora scomodo: togliere i tap dopo le note lunghe nelle battute m2/m8, o accorciare le note lunghe. Se fuori tempo in modo costante su un telefono è la latenza: rifare la calibrazione (non il livello).
-- **Livello 3 TOP ONE (boss): va bene come demo.** Battaglia con barra della salute (3 segmenti, danno per nota colpita), censura sulle corsie, root forzato in fase 3. La mappa note è ancora una bozza non ascoltata. Vedi sotto: il finale va reso molto più spettacolare.
+- **Livello 3 TOP ONE (boss): l'idea va bene (confermata da Stefano), ora è una vera boss fight.** In scena ci sono il Ministro e QUIETE.SYS con sprite di battaglia (attacco quando sbagli, colpito quando prendi la nota, KO a segmento vuoto) e numeri di danno; più lunga è la combo, più danno fai (da x0,9 a x2 a combo 40). Da provare su telefono: bilanciamento del danno e leggibilità degli sprite.
+- Versione precedente della nota: Battaglia con barra della salute (3 segmenti, danno per nota colpita), censura sulle corsie, root forzato in fase 3. La mappa note è ancora una bozza non ascoltata. Vedi sotto: il finale va reso molto più spettacolare.
 
 ## Lingue
 

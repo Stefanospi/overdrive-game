@@ -158,11 +158,14 @@ export const LEVELS = {
     rootBeat: 48, // ...and root access opens by itself
     // The fight. A phase starts on each of these beats and has its own share of the boss's
     // health (1 = the whole boss) and its own portrait. A phase is emptied by playing it at
-    // about 85% accuracy (`base`); ID FALSA and root hit harder, so they ease it.
+    // about 85% accuracy (`base`) with a short combo. The combo is the weapon: damage goes
+    // from x0.9 (no combo) up to x2 (combo 40+). ID FALSA and root hit harder too.
     boss: {
       starts: [0, 24, 48],
       share: [0.3, 0.3, 0.4],
       faces: ['quiete-smile', 'ministro-calm', 'ministro-angry'],
+      // who stands on stage in each phase (battle sprites either side of the speakers)
+      fighters: [['quiete'], ['ministro'], ['quiete', 'ministro']],
       base: 0.85,
       // black bars over a lane: the far part of the highway is hidden, notes show up late.
       // { from, to } in beats from bar 1.

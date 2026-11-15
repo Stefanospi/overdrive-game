@@ -220,7 +220,8 @@ def build(expr):
 
 def build_minister(expr):
     """The villain: a filthy-rich dandy. Top hat, black tailcoat, white gloves, gold buttons,
-    watch chain and cane, a cigar, and a censorship bar where the eyes should be."""
+    watch chain and cane, a cigar, and a censorship bar where the eyes should be.
+    Battle poses (boss fight): 'attack' raises the cane, 'hurt' loses the top hat."""
     g = new()
     # trousers and patent shoes
     sr(g, 10, 44, 17, 52, 'P')
@@ -251,20 +252,38 @@ def build_minister(expr):
     px(g, 10, 36, 'g')
     px(g, 10, 33, 'e')  # pocket square
     px(g, 11, 33, 'e')
-    # gold-topped cane in the right hand
-    rect(g, 30, 40, 31, 41, 'g')
-    rect(g, 30, 42, 30, 55, 'B')
-    rect(g, 31, 40, 31, 55, 'q')
+    if expr == 'attack':
+        # the right arm goes up and the cane comes down on you
+        for y in range(35, 50):
+            for x in range(29, 33):
+                g[y][x] = None
+        rect(g, 29, 21, 32, 34, 'T')
+        rect(g, 29, 21, 29, 34, 'p')
+        rect(g, 29, 18, 32, 20, 'W')
+        rect(g, 30, 2, 31, 3, 'g')
+        rect(g, 30, 4, 30, 17, 'B')
+        rect(g, 31, 2, 31, 17, 'q')
+    else:
+        # gold-topped cane in the right hand
+        rect(g, 30, 40, 31, 41, 'g')
+        rect(g, 30, 42, 30, 55, 'B')
+        rect(g, 31, 40, 31, 55, 'q')
     # neck, plump pale head, top hat
     sr(g, 15, 24, 17, 27, 'n')
     disc(g, 17.5, 15, 8, 10, 'N')
     sr(g, 9, 13, 9, 17, 'N')
     sr(g, 17, 17, 17, 19, 'n')
     sr(g, 12, 23, 17, 25, 'n')
-    sr(g, 10, 0, 17, 4, 'T')
-    sr(g, 12, 1, 12, 3, 'p')
-    sr(g, 10, 4, 17, 4, 'R')
-    sr(g, 6, 5, 17, 6, 'T')
+    if expr == 'hurt':
+        # the top hat flies off
+        rect(g, 25, 0, 33, 2, 'T')
+        rect(g, 25, 2, 33, 2, 'R')
+        rect(g, 23, 3, 35, 3, 'T')
+    else:
+        sr(g, 10, 0, 17, 4, 'T')
+        sr(g, 12, 1, 12, 3, 'p')
+        sr(g, 10, 4, 17, 4, 'R')
+        sr(g, 6, 5, 17, 6, 'T')
     if expr == 'calm':
         rect(g, 6, 11, 29, 15, 'X')
         sr(g, 15, 21, 17, 21, 'K')
@@ -281,6 +300,10 @@ def build_minister(expr):
         sr(g, 13, 22, 13, 23, 'K')
         sr(g, 16, 22, 17, 22, 'R')
         sr(g, 13, 19, 14, 19, 'w')
+        if expr == 'hurt':
+            # the censorship bar cracks
+            for x, y in ((9, 11), (10, 12), (11, 13), (24, 13), (25, 14), (26, 15), (17, 12), (18, 13)):
+                px(g, x, y, 'R')
     return g
 
 
@@ -457,7 +480,8 @@ def build_grafico(expr):
 
 def build_quiete(expr):
     """The Ministry's servile guard (QUIETE.SYS): navy uniform, peaked cap with a badge,
-    mirrored shades, baton, and a smile that never changes."""
+    mirrored shades, baton, and a smile that never changes.
+    Battle poses (boss fight): 'attack' raises the baton, 'hurt' cracks the shades."""
     g = new()
     # legs and boots
     sr(g, 10, 44, 17, 52, 'F')
@@ -479,9 +503,19 @@ def build_quiete(expr):
     # white collar and black tie
     sr(g, 15, 29, 17, 30, 'W')
     sr(g, 17, 31, 17, 36, 'T')
-    # baton in the right hand
-    rect(g, 30, 36, 31, 47, 'B')
-    rect(g, 30, 36, 30, 38, 'b')
+    if expr == 'attack':
+        # the right arm goes up, baton over the head
+        for y in range(35, 48):
+            for x in range(28, 32):
+                g[y][x] = None
+        rect(g, 28, 21, 31, 34, 'F')
+        rect(g, 29, 18, 31, 20, 'T')
+        rect(g, 30, 3, 31, 17, 'B')
+        rect(g, 30, 3, 30, 6, 'b')
+    else:
+        # baton in the right hand
+        rect(g, 30, 36, 31, 47, 'B')
+        rect(g, 30, 36, 30, 38, 'b')
     # neck and head
     sr(g, 15, 25, 17, 29, 's')
     disc(g, 17.5, 17, 7.6, 9, 'S')
@@ -496,7 +530,7 @@ def build_quiete(expr):
     px(g, 18, 6, 'g')
     # nose and shades
     sr(g, 17, 18, 17, 20, 's')
-    if expr == 'smile':
+    if expr in ('smile', 'attack'):
         rect(g, 10, 14, 25, 16, 'K')
         spx(g, 12, 14, 'b')
         sr(g, 14, 22, 17, 22, 'W')
@@ -510,6 +544,11 @@ def build_quiete(expr):
             spx(g, 13 - i, 14 + i, 'K')
         sr(g, 14, 22, 17, 22, 'm')
         rect(g, 8, 18, 27, 18, 'R')
+        if expr == 'hurt':
+            # mouth open, a lens cracked
+            sr(g, 14, 22, 17, 23, 'K')
+            for i in range(3):
+                px(g, 21 + i, 14 + i, 'W')
     return g
 
 
@@ -582,15 +621,15 @@ def rects(g):
 # ---------------------------------------------------------------------------
 # Writes src/sprites.js: every character sprite as a list of pixel rects.
 #   mars-<expr>      neutral, glitch, surprised, win, sad, angry, shout
-#   ministro-<expr>  calm, angry
+#   ministro-<expr>  calm, angry, attack, hurt, ko      quiete-<expr>  smile, error, attack, hurt, ko
 # Edit build() / build_minister() above (hair, outfit, faces), then run:  npm run sprites
 # ---------------------------------------------------------------------------
 import os
 
 MARS_EXPRESSIONS = ("neutral", "glitch", "surprised", "win", "sad", "angry", "shout")
-MINISTER_EXPRESSIONS = ("calm", "angry")
+MINISTER_EXPRESSIONS = ("calm", "angry", "attack", "hurt")
 GIRL_EXPRESSIONS = ("neutral", "happy", "wink", "surprised")
-QUIETE_EXPRESSIONS = ("smile", "error")
+QUIETE_EXPRESSIONS = ("smile", "error", "attack", "hurt")
 GRAFICO_EXPRESSIONS = ("neutral", "happy", "wink", "surprised")
 
 
@@ -610,6 +649,9 @@ if __name__ == "__main__":
     data = {"mars-" + e: sprite_rects(e) for e in MARS_EXPRESSIONS}
     data.update({"ministro-" + e: minister_rects(e) for e in MINISTER_EXPRESSIONS})
     data.update({"quiete-" + e: [[x, y, w, h, c] for (x, y, w, h, c) in rects(outline(build_quiete(e)))] for e in QUIETE_EXPRESSIONS})
+    # knocked out (boss fight): the hurt pose, torn apart like Mars's glitch
+    data["ministro-ko"] = [[x, y, w, h, c] for (x, y, w, h, c) in rects(glitch(outline(build_minister("hurt"))))]
+    data["quiete-ko"] = [[x, y, w, h, c] for (x, y, w, h, c) in rects(glitch(outline(build_quiete("hurt"))))]
     data.update({"girl-" + e: [[x, y, w, h, c] for (x, y, w, h, c) in rects(outline(build_girl(e)))] for e in GIRL_EXPRESSIONS})
     data.update({"grafico-" + e: [[x, y, w, h, c] for (x, y, w, h, c) in rects(outline(build_grafico(e)))] for e in GRAFICO_EXPRESSIONS})
     lines = [

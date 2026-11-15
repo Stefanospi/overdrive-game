@@ -36,6 +36,8 @@ const REWIND_PAUSE = 0.35; // seconds of silence before the track restarts
 const REWIND_ANIM = 1.2; // seconds the tape takes to wind back
 const LANE_COLORS = [COLORS.red, COLORS.paper, COLORS.red];
 const GRADE_WEIGHT = { perfect: 1, good: 0.7, ok: 0.4 }; // same weights as the accuracy in rank.js
+const COMBO_DMG = (combo) => 0.9 + Math.min(combo, 40) * 0.0275; // boss damage: x0.9 with no combo, x2 from combo 40
+const FIGHTER_IDLE = { quiete: ['quiete-smile', 'quiete-smile', 'quiete-error'], ministro: ['ministro-calm', 'ministro-calm', 'ministro-angry'] };
 const CENSOR_S = 0.55; // a censored lane hides everything farther than this scale (about 1.2 beats out)
 const JUDGE_COLORS = { perfect: '#ffffff', good: '#ff2a2a', ok: '#c0c0c0', miss: '#b8121a', broken: '#b8121a' };
 const KEYS = { A: 0, S: 1, D: 2, J: 0, K: 1, L: 2, LEFT: 0, DOWN: 1, RIGHT: 2 };
@@ -456,6 +458,7 @@ export class Play extends Phaser.Scene {
 
   fail(key, od) {
     if (this.shielded()) return;
+    if (this.boss) this.bossAttack();
     if (this.combo >= 8) this.react('miss', Math.random() < 0.5 ? 'sad' : 'angry');
     // remember what this streak of misses costs: the rewind bonus gives it back
     if (!this.missRun) this.streak = { combo: this.combo, od: 0 };
@@ -976,13 +979,21 @@ export class Play extends Phaser.Scene {
     const i = this.bossAt(n.b);
     const seg = B.segs[i];
     if (seg.hp <= 0) return;
-    const mult = (this.odMode ? 2 : 1) * (this.forged() ? 1.5 : 1);
+    const combo = COMBO_DMG(this.combo);
+    const mult = (this.odMode ? 2 : 1) * (this.forged() ? 1.5 : 1) * combo;
     const dmg = ((GRADE_WEIGHT[key] || 0.4) / seg.n) * (seg.cap / this.level.boss.base) * mult;
     const taken = Math.min(seg.hp, dmg);
     seg.hp = seg.hp - taken < 0.0005 ? 0 : seg.hp - taken;
     n.bd = (n.bd || 0) + taken;
     B.flash = 1;
     B.shake = 1;
+    // the fighters of that phase flinch, and the damage pops out of them
+    const now = this.time.now;
+    for (const f of this.fighters) {
+      if (!this.level.boss.fighters[i].includes(f.who)) continue;
+      f.hurtAt = now;
+      this.showDamage(f, taken, combo >= 1.5);
+    }
     if (seg.hp === 0) this.bossDown(i);
   }
 
@@ -1014,6 +1025,7 @@ export class Play extends Phaser.Scene {
     B.flash = Math.max(0, B.flash - dt * 5);
     B.shake = Math.max(0, B.shake - dt * 6);
     this.bossFace.setX(px(8) + Math.sin(this.time.now / 22) * px(2.5) * B.shake);
+    this.updateFighters(sb);
     const pct = Math.round(this.bossLeft() * 100);
     if (pct !== B.shown) {
       B.shown = pct;
@@ -1023,6 +1035,7 @@ export class Play extends Phaser.Scene {
 
   buildBossHud() {
     this.censorTexts = [];
+    this.fighters = [];
     const L = this.level;
     if (!L.boss) return;
     const ps = (size, color) => ({ fontFamily: FONT_PS, fontSize: px(size) + 'px', color });
@@ -1030,10 +1043,78 @@ export class Play extends Phaser.Scene {
     this.bossFace = this.add.image(px(8), px(98), L.boss.faces[0]).setOrigin(0).setDepth(6.5).setCrop(0, 0, 36, 26).setScale(K * 0.67);
     this.bossName = this.add.text(px(38), px(98), TEXTS.boss.phases[0], ps(6, '#ffffff')).setDepth(6.5);
     this.bossHp = this.add.text(W - px(8), px(98), '', ps(6, '#ff7a7a')).setOrigin(1, 0).setDepth(6.5);
+    // battle sprites: QUIETE.SYS left of the speakers, the Minister right, weapons toward the middle
+    const feet = px(this.stackBottom + 3);
+    const mk = (who, x, dir) => ({
+      who,
+      x,
+      dir, // +1 = faces right (toward the centre from the left side)
+      key: FIGHTER_IDLE[who][0],
+      hurtAt: -9999,
+      atkAt: -9999,
+      img: this.add.image(x, feet, FIGHTER_IDLE[who][0]).setOrigin(0.5, 1).setScale(K * 1.5).setDepth(-5).setFlipX(dir < 0),
+    });
+    this.fighters = [mk('quiete', px(40), 1), mk('ministro', W - px(40), -1)];
+    this.feetY = feet;
+    // damage numbers: a small pool of texts, reused in turn
+    this.dmgTexts = Array.from({ length: 6 }, () => this.add.text(0, 0, '', ps(9, '#ffffff')).setOrigin(0.5).setDepth(7).setAlpha(0));
+    this.dmgTexts.forEach((t) => t.setShadow(px(2), px(2), '#000000', 0, false, true));
+    this.dmgAt = 0;
     // the word on a censored lane
     for (let l = 0; l < L.lanes; l++) {
       this.censorTexts.push(this.add.text(0, 0, TEXTS.boss.censored, ps(8, '#ff2a2a')).setOrigin(0.5).setDepth(-2.9).setAlpha(0));
     }
+  }
+
+  // The fighters on stage. Each one is idle, hurt (you hit it), attacking (you missed) or
+  // knocked out (its segment is empty). Whoever is not in the current phase waits in the dark.
+  updateFighters(sb) {
+    const B = this.boss;
+    const L = this.level.boss;
+    const now = this.time.now;
+    for (const f of this.fighters) {
+      const active = L.fighters[B.phase].includes(f.who);
+      // the last phase this fighter was in, to know if it is still standing
+      let own = -1;
+      for (let i = 0; i <= B.phase; i++) if (L.fighters[i].includes(f.who)) own = i;
+      const ko = own >= 0 && B.segs[own].hp === 0;
+      const hurt = Phaser.Math.Clamp(1 - (now - f.hurtAt) / 170, 0, 1);
+      const atk = Phaser.Math.Clamp(1 - (now - f.atkAt) / 340, 0, 1);
+      const key = ko ? f.who + '-ko' : hurt > 0 ? f.who + '-hurt' : atk > 0 ? f.who + '-attack' : FIGHTER_IDLE[f.who][B.phase];
+      if (key !== f.key) {
+        f.key = key;
+        f.img.setTexture(key);
+      }
+      const bob = active && !ko ? Math.abs(Math.sin(sb * Math.PI)) * px(3) : 0;
+      const lunge = Math.sin(atk * Math.PI) * px(16);
+      f.img.setPosition(f.x + f.dir * (lunge - hurt * px(7)), this.feetY - bob + (ko ? px(4) : 0));
+      f.img.setAngle(ko ? -f.dir * 12 : hurt * -f.dir * 6);
+      f.img.setAlpha(ko ? (active ? 0.6 : 0.35) : active ? 1 : 0.5);
+      if (hurt > 0.6 && !ko && !this.reduced) f.img.setTintFill(0xffffff);
+      else if (!active) f.img.setTint(0x666666);
+      else f.img.clearTint();
+    }
+  }
+
+  // You missed: whoever is standing swings at you.
+  bossAttack() {
+    const B = this.boss;
+    for (const f of this.fighters) {
+      if (this.level.boss.fighters[B.phase].includes(f.who) && B.segs[B.phase].hp > 0) f.atkAt = this.time.now;
+    }
+  }
+
+  // A number flies out of the fighter: how much that hit took (bigger and white on a strong one).
+  showDamage(f, taken, strong) {
+    const t = this.dmgTexts[this.dmgAt++ % this.dmgTexts.length];
+    this.tweens.killTweensOf(t);
+    const y = this.feetY - px(98);
+    t.setText('-' + Math.max(1, Math.round(taken * 1000)))
+      .setColor(strong ? '#ffffff' : '#ff7a7a')
+      .setPosition(f.x + px(Phaser.Math.Between(-10, 10)), y)
+      .setScale(strong ? 1.5 : 1)
+      .setAlpha(1);
+    this.tweens.add({ targets: t, y: y - px(24), alpha: 0, scale: strong ? 1.1 : 0.8, duration: 520, ease: 'Quad.Out' });
   }
 
   // The health bar: one well per phase, the live phase in red, a white flash on every hit.
