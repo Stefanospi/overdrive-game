@@ -38,5 +38,9 @@ export const FONT_VT = 'VT323, monospace';
 //   auto            a bot plays every note
 //   seek=<beats>    start the level from that beat
 //   offset=<ms>     extra audio/visual latency compensation
+//   finale          boss: start just before the ESEGUI charge (bar 20)
+//   boss=good|bad   boss: with ?auto, the bot plays like a good or a bad player
+//   hp=<0..1>       boss: health it starts with
+//   notap           boss: with ?auto, the bot does not tap ESEGUI
 //   districts=a,b   boss: state of the two districts (high|mid|low), instead of the saved progress
 export const PARAMS = new URLSearchParams(window.location.search);

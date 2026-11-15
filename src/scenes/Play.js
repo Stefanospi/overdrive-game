@@ -11,6 +11,7 @@ import { rank } from '../rank.js';
 import * as A from '../audio.js';
 import { BOSS_TUNING } from '../bossTuning.js';
 import { BossShow, GOLD } from '../bossShow.js';
+import { BossFinale } from '../bossFinale.js';
 
 // Lane rhythm game: notes leave the soundsystem at the top and travel down a
 // perspective highway to the hit line. One scene plays any level in levels.js.
@@ -175,6 +176,8 @@ export class Play extends Phaser.Scene {
     this.show = this.boss ? new BossShow(this) : null;
     // the stun zoom grows from near the top, so the HUD stays on screen
     if (this.show) this.cameras.main.setOrigin(0.5, 0.08);
+    this.finale = this.boss ? new BossFinale(this) : null; // ESEGUI and the EP screen
+    this.bossResult = null;
     this.badge = null;
     this.giftDone = false;
     track('level_start', { level: L.id });
@@ -209,6 +212,7 @@ export class Play extends Phaser.Scene {
     }
     this.events.once('shutdown', () => {
       if (this.show) this.show.destroy();
+      if (this.finale) this.finale.destroy();
       this.stopSubs();
       if (this.track) this.track.stop();
     });
@@ -235,7 +239,8 @@ export class Play extends Phaser.Scene {
     if (!this.sys.isActive() || this.ready) return;
     const L = this.level;
     const c = A.getCtx();
-    const seek = Number(PARAMS.get('seek')) || 0;
+    // ?finale jumps to just before the ESEGUI charge of the boss
+    const seek = Number(PARAMS.get('seek')) || (this.finale && PARAMS.has('finale') ? BOSS_TUNING.chargeBeat - 2 : 0);
     this.lat = A.latency() + (calibration() + (Number(PARAMS.get('offset')) || 0)) / 1000;
     this.loading.setVisible(false);
 
@@ -247,7 +252,7 @@ export class Play extends Phaser.Scene {
       const when = c.currentTime + 0.25;
       const offset = seek ? Math.max(0, tr.lead + seek * this.beat - 0.5) : 0;
       this.t0 = when - offset + tr.lead;
-      this.track = A.playTrack(buffer, when, offset, { fadeIn: tr.fadeIn, fadeOutAt: tr.length - tr.fadeOut, fadeOut: tr.fadeOut });
+      this.track = A.playTrack(buffer, when, offset, { fadeIn: tr.fadeIn, ...this.trackEnd() });
     } else {
       A.setEcho(this.beat * 0.75);
       this.t0 = c.currentTime + 0.4 + (seek ? -seek : COUNT_IN) * this.beat;
@@ -262,6 +267,13 @@ export class Play extends Phaser.Scene {
     }
     this.ready = true;
     if (!seek) this.showLowerThird();
+  }
+
+  // How the clip ends: a fade-out, or (boss) a clean cut where the finale takes over.
+  trackEnd() {
+    const tr = this.level.track;
+    if (this.finale) return { stopAt: tr.lead + BOSS_TUNING.unlockBeat * this.beat };
+    return { fadeOutAt: tr.length - tr.fadeOut, fadeOut: tr.fadeOut };
   }
 
   // ---- static pieces ---------------------------------------------------------
@@ -320,10 +332,11 @@ export class Play extends Phaser.Scene {
 
     // combo (left of the highway) and multiplier (right)
     const cy = this.stackBottom + 28;
-    this.add.text(px(12), px(cy), TEXTS.ui.combo, ps(6, '#c0c0c0')).setDepth(6);
+    const comboLabel = this.add.text(px(12), px(cy), TEXTS.ui.combo, ps(6, '#c0c0c0')).setDepth(6);
     this.comboText = this.add.text(px(12), px(cy + 12), '', ps(22, '#ffffff')).setDepth(6);
-    this.add.text(W - px(12), px(cy), TEXTS.ui.mult, ps(6, '#c0c0c0')).setOrigin(1, 0).setDepth(6);
+    const multLabel = this.add.text(W - px(12), px(cy), TEXTS.ui.mult, ps(6, '#c0c0c0')).setOrigin(1, 0).setDepth(6);
     this.multText = this.add.text(W - px(12), px(cy + 12), '', ps(22, '#ff2a2a')).setOrigin(1, 0).setDepth(6);
+    this.playUi = [comboLabel, this.comboText, multLabel, this.multText]; // what the boss finale dims
 
     // judgements: one text per grade, shown in turn
     this.judgeTexts = {};
@@ -360,6 +373,7 @@ export class Play extends Phaser.Scene {
 
   // ---- input -----------------------------------------------------------------
   press(l) {
+    if (this.finale && this.finale.tap()) return; // boss: the ESEGUI tap
     this.down[l] = true;
     this.laneFx[l] = 1;
     if (this.over || !this.ready || this.rew) return;
@@ -827,7 +841,7 @@ export class Play extends Phaser.Scene {
     const when = c.currentTime + REWIND_PAUSE;
     const offset = Math.max(0, tr.lead + target * this.beat);
     this.t0 = when - offset + tr.lead;
-    this.track = A.playTrack(this.buffer, when, offset, { ramp: 0.06, fadeOutAt: tr.length - tr.fadeOut, fadeOut: tr.fadeOut });
+    this.track = A.playTrack(this.buffer, when, offset, { ramp: 0.06, ...this.trackEnd() });
     this.rew = null;
 
     // cues and script lines follow the new position
@@ -961,11 +975,8 @@ export class Play extends Phaser.Scene {
     this.tutText.setText(n.len > 0 ? TEXTS.ui.hold : TEXTS.ui.tap).setPosition(x, y + px(76)).setVisible(true);
   }
 
-  finishLevel() {
-    this.over = true;
-    this.stopSubs();
-    this.cameras.main.fadeOut(500);
-    const result = {
+  buildResult() {
+    return {
       level: this.level.id,
       score: this.score,
       maxCombo: this.maxCombo,
@@ -975,6 +986,28 @@ export class Play extends Phaser.Scene {
       auto: this.auto,
       boss: this.boss ? this.bossLeft() : undefined,
     };
+  }
+
+  // Boss: the fight ends with bar 19 and the result is fixed here (what is left of the
+  // boss decides). The finale takes over: ESEGUI, the blast, the EP screen, then the story.
+  closeFight() {
+    this.over = true;
+    this.stopSubs();
+    this.removeBadge();
+    this.killPopup();
+    if (this.odMode) {
+      this.odMode = false;
+      this.tweens.add({ targets: this.inv, v: 0, duration: 300 });
+    }
+    this.bossResult = this.buildResult();
+    track('level_complete', { level: this.level.id, rank: rank(this.bossResult) });
+  }
+
+  finishLevel() {
+    this.over = true;
+    this.stopSubs();
+    this.cameras.main.fadeOut(500);
+    const result = this.buildResult();
     if (!this.auto) settings.set('tutorialDone', true);
     track('level_complete', { level: this.level.id, rank: rank(result) });
     // the story reacts to how it went, then hands over to the report
@@ -985,6 +1018,17 @@ export class Play extends Phaser.Scene {
     this.time.delayedCall(520, () => this.scene.start(...next));
   }
 
+  // The debug bot (?auto). With ?boss=good or ?boss=bad it plays like a person would:
+  // seconds off the beat for this note, or null to miss it. The same notes every run.
+  botOffset(n) {
+    const mode = PARAMS.get('boss');
+    if (mode !== 'good' && mode !== 'bad') return 0;
+    const x = Math.sin(n.b * 91.7 + n.lane * 13.1) * 43758.5453;
+    const r = x - Math.floor(x);
+    if (mode === 'good') return r < 0.06 ? null : r < 0.3 ? 0.08 : 0;
+    return r < 0.45 ? null : r < 0.75 ? 0.12 : r < 0.9 ? 0.08 : 0;
+  }
+
   // ---- the boss fight ----------------------------------------------------------
   // The level's `boss` block splits the boss's health into one segment per phase. Every note
   // you hit takes some of the segment of the phase it belongs to; what the segments are
@@ -992,10 +1036,11 @@ export class Play extends Phaser.Scene {
   // root access 2x. A note taken back by a rewind gives its damage back.
   initBoss() {
     const B = this.level.boss;
+    const hp = PARAMS.has('hp') ? Phaser.Math.Clamp(Number(PARAMS.get('hp')) || 0, 0, 1) : 1; // debug: ?hp=0.4
     const segs = B.starts.map((start, i) => {
       const end = i + 1 < B.starts.length ? B.starts[i + 1] : Infinity;
       const n = this.notes.filter((x) => x.b >= start && x.b < end).length;
-      return { start, cap: B.share[i], hp: B.share[i], n: Math.max(1, n) };
+      return { start, cap: B.share[i], hp: B.share[i] * hp, n: Math.max(1, n) };
     });
     return { segs, phase: 0, flash: 0, shake: 0, face: B.faces[0], shown: -1 };
   }
@@ -1181,9 +1226,13 @@ export class Play extends Phaser.Scene {
     for (const n of this.rew ? [] : this.notes) {
       if (n.b - sb > 1) break;
       if (n.st === 'wait') {
-        if (this.auto && sb >= n.b) {
-          this.laneFx[n.lane] = 1;
-          this.hit(n, 0);
+        if (this.auto && sb >= n.b && !n.skip) {
+          const off = this.botOffset(n);
+          if (off === null) n.skip = true; // the bot lets this one go
+          else {
+            this.laneFx[n.lane] = 1;
+            this.hit(n, off);
+          }
         } else if ((sb - n.b) * this.beat > OK_WIN) this.miss(n);
       } else if (n.st === 'hold') {
         if (sb >= n.b + n.len) this.finishHold(n, true);
@@ -1200,7 +1249,11 @@ export class Play extends Phaser.Scene {
       this.od = 55;
       this.tweens.add({ targets: this.inv, v: 0, duration: 400 });
     }
-    if (!this.over && !this.rew && sb >= this.endBeat) this.finishLevel();
+    if (!this.over && !this.rew && sb >= this.endBeat && !this.finale) this.finishLevel();
+    if (this.finale) {
+      if (!this.bossResult && this.ready && !this.rew && sb >= BOSS_TUNING.resultBeat) this.closeFight();
+      this.finale.update(sb, dt);
+    }
 
     // envelopes
     const fall = (v, rate) => Math.max(0, v - dt * rate);

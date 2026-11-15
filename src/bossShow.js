@@ -39,6 +39,7 @@ export class BossShow {
     this.stuns = T.stunsPerPhase.map(() => 0); // stuns used in each phase
     this.wasStunned = false;
     this.vis = 0; // visual clock in seconds: it stops during a freeze
+    this.ga = T.giantAlpha; // the giant's opacity
     this.buildGiant();
     this.buildCutIn();
     this.buildDistricts();
@@ -142,7 +143,7 @@ export class BossShow {
     this.topY = px(s.stackBottom + 2);
     this.who = s.level.boss.giant[0];
     this.key = IDLE[this.who];
-    this.giant = s.add.image(CX, this.topY, this.key).setOrigin(0.5, 0).setScale(this.sc).setDepth(-4.5).setAlpha(T.giantAlpha);
+    this.giant = s.add.image(CX, this.topY, this.key).setOrigin(0.5, 0).setScale(this.sc).setDepth(-4.5).setAlpha(this.ga);
     this.holesG = s.add.graphics().setDepth(-4.45);
     this.cubesG = s.add.graphics().setDepth(-4.4);
     this.ghost = s.add.image(CX, this.topY, this.key).setOrigin(0.5, 0).setScale(this.sc).setDepth(-4.6).setVisible(false); // the boss that is leaving
@@ -224,7 +225,7 @@ export class BossShow {
     const shake = this.reduced ? 0 : Math.sin(this.vis * 90) * hurt * px(3);
     g.setPosition(CX + shake, this.topY + (kneel ? px(64) : 0) - this.bob + lunge);
     g.setScale(this.sc * (1 + atk * 0.05));
-    g.setAlpha(T.giantAlpha);
+    g.setAlpha(this.ga);
     this.drawTransition(vdt);
     if (hurt > 0.6 && !kneel && !this.reduced) g.setTintFill(0xffffff);
     else g.clearTint();
@@ -258,7 +259,7 @@ export class BossShow {
     if (!this.reduced) this.freeze = Math.max(this.freeze, T.transitionFreeze);
     this.tr.t = 0;
     this.tr.fusion = to === 'fusion';
-    this.ghost.setTexture(from + '-ko').setPosition(this.giant.x, this.giant.y).setScale(this.sc).setAngle(0).setAlpha(T.giantAlpha).setVisible(true);
+    this.ghost.setTexture(from + '-ko').setPosition(this.giant.x, this.giant.y).setScale(this.sc).setAngle(0).setAlpha(this.ga).setVisible(true);
     const word = TEXTS.boss.words.phase[phase];
     if (word) {
       s.setMars(phase === 2 ? 'shout' : 'angry');
@@ -280,16 +281,16 @@ export class BossShow {
     const gh = this.ghost;
     if (!tr.fusion) {
       // the old one tips over and drops out, the new one comes down from above
-      gh.setY(this.topY + px(64) + px(420) * e * e).setAngle(12 * e).setAlpha(T.giantAlpha * (1 - e));
+      gh.setY(this.topY + px(64) + px(420) * e * e).setAngle(12 * e).setAlpha(this.ga * (1 - e));
       const d = 1 - (1 - e) * (1 - e);
-      g.setY(g.y - px(150) * (1 - d)).setAlpha(T.giantAlpha * d);
+      g.setY(g.y - px(150) * (1 - d)).setAlpha(this.ga * d);
       return;
     }
     // fusion: the old body is sucked into a vortex, the fused one bursts out of it
     const to = this.aim();
-    gh.setScale(this.sc * (1 - e)).setPosition(CX, this.topY + 20 * this.sc * e).setAlpha(T.giantAlpha * (1 - e));
+    gh.setScale(this.sc * (1 - e)).setPosition(CX, this.topY + 20 * this.sc * e).setAlpha(this.ga * (1 - e));
     const out = Phaser.Math.Clamp((e - 0.7) / 0.3, 0, 1);
-    g.setAlpha(T.giantAlpha * out).setScale(this.sc * (1.3 - 0.3 * out));
+    g.setAlpha(this.ga * out).setScale(this.sc * (1.3 - 0.3 * out));
     const c = this.cubesG;
     for (let i = 0; i < SWIRL; i++) {
       const r = px(40 + 210 * rnd(i + 9)) * (1 - e);
@@ -495,7 +496,7 @@ export class BossShow {
   // ---- frame ---------------------------------------------------------------------
   update(sb, dt) {
     const frozen = this.freeze > 0;
-    this.freeze = Math.max(0, this.freeze - dt * 1000);
+    this.freeze = Math.max(0, this.freeze - this.s.game.loop.rawDelta); // real ms: a slow frame must not stretch it
     const vdt = frozen ? 0 : dt;
     this.vis += vdt;
     // the camera leans in while the boss is stunned

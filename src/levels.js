@@ -104,12 +104,13 @@ const ACID_PATTERNS = {
 };
 
 // TOP ONE: the boss fight of chapter 3 (SERVER, QUIETE.SYS and the Minister). Speed house /
-// UK groove, 147 BPM; the clip starts on the first drop (1:25 of the master) and runs 22
+// UK groove, 147 BPM; the clip starts on the first drop (1:25 of the master) and runs 27
 // bars, numbered from 1 here.
 //   phase 1 CENSURA  bars 1-6    QUIETE.SYS: lanes get censored (black bars hide the far notes)
 //   phase 2 DECRETO  bars 7-12   the Minister: more notes; Gabriel's ID FALSA on bars 9-12 (forgeBeat)
 //   phase 3 ROOT     bars 13-19  Minister+Quiete fused: all lanes, root forced at the start
-//   outro            bars 20-22  cut and rise, few notes
+//   break            bar 20      no notes: ESEGUI charges, then waits for the tap (bossFinale.js)
+//   drop             bars 21-27  starts on the tap, loops under the EP screen
 // Every correct hit hurts the boss (see `boss` in the level and Play.damageBoss).
 // Note map: no notes on the kick (steps 0, 4, 8, 12), everything on the off-beat bass
 // (steps 2, 6, 10, 14) with a few 16th pick-ups (5, 7, 11, 13, 15). Built on the signal's
@@ -136,10 +137,8 @@ const TOPONE_PATTERNS = {
   e2: P([2, 2], [6, 1], [10, 0], [11, 1], [14, 2]),
   e3: P([2, 0], [6, 2], [7, 1], [10, 2], [14, 1], [15, 0]),
   e4: P([2, 1], [5, 0], [6, 2], [10, 1], [13, 2], [14, 0]),
-  // outro: it thins out, the last bar leaves room for the fade
-  o1: P([2, 1], [6, 1], [10, 1], [14, 1]),
-  o2: P([2, 0], [6, 2], [10, 0]),
-  o3: P([2, 1], [6, 1]),
+  // bar 20, the break: no notes, the ESEGUI ring charges (src/bossFinale.js)
+  z: P(),
 };
 
 export const LEVELS = {
@@ -188,7 +187,7 @@ export const LEVELS = {
       ['drop', 'c1'], ['hold', 'c2'], ['hold', 'c1'], ['hold', 'c3'], ['hold', 'c2'], ['hold', 'c4'],
       ['drop', 'd1'], ['hold', 'd2'], ['hold', 'd1'], ['hold', 'd3'], ['hold', 'd2'], ['hold', 'd4'],
       ['drop', 'e1'], ['hold', 'e2'], ['hold', 'e3'], ['hold', 'e1'], ['hold', 'e2'], ['hold', 'e3'], ['hold', 'e4'],
-      ['out', 'o1'], ['out', 'o2'], ['out', 'o3'],
+      ['out', 'z'],
     ],
   },
 

@@ -208,7 +208,7 @@ export default {
     },
     // ---- chapter 3: SERVER, boss fight vs QUIETE.SYS and the Minister ----------------
     // Every ending closes on a Mars line that leads to the payload screen (the EP link);
-    // the 3-word status sits just before it. TODO: payload screen (OVERDRIVE.EXP bar + ESEGUI).
+    // the 3-word status sits just before it. ESEGUI is pressed in the level itself (src/bossFinale.js).
     server_intro: {
       chapter: 'CAPITOLO 3',
       title: 'ROOT',
@@ -238,7 +238,7 @@ export default {
         { who: 'girl', expr: 'happy', text: 'Restore point caricato. Città intera.' },
         { scene: 'city_on', caption: 'CITTÀ, 04:40', sfx: 'crowd', text: 'Il soundsystem riaccende le finestre.' },
         { caption: 'STATO', text: 'Whitelist utenti: tutti.' },
-        { who: 'mars', expr: 'win', text: 'Payload consegnato. Premi ESEGUI.' },
+        { who: 'mars', expr: 'win', text: 'Payload consegnato. Il basso è libero.' },
       ],
     },
     server_mid: {
@@ -249,7 +249,7 @@ export default {
         { who: 'ministro', expr: 'calm', text: 'Decreto 139 valido. Per errore.' },
         { who: 'girl', expr: 'happy', text: 'Città ripristinata. Quasi tutta.' },
         { caption: 'STATO', text: 'Whitelist utenti: molti.' },
-        { who: 'mars', expr: 'neutral', text: 'Il basso tossisce. Ma suona. ESEGUI.' },
+        { who: 'mars', expr: 'neutral', text: 'Il basso tossisce. Ma suona.' },
       ],
     },
     server_low: {
@@ -259,7 +259,7 @@ export default {
         { scene: 'monitors', caption: 'SERVER, 04:35', text: 'Rilevati. Ma il timbro regge.' },
         { who: 'quiete', expr: 'error', text: 'Errore 404: non riesco a zittirvi.' },
         { caption: 'STATO', text: 'Whitelist utenti: pochi.' },
-        { who: 'mars', expr: 'neutral', text: 'Bastano. Il link resta. ESEGUI.' },
+        { who: 'mars', expr: 'neutral', text: 'Il link resta. Il basso torna.' },
       ],
     },
   },
@@ -330,7 +330,9 @@ export default {
     phaseDown: ['QUIETE.SYS GIÙ', 'MINISTRO GIÙ', 'FUSIONE GIÙ'],
     ko: 'ROOT TOTALE',
     // giant words tied to events (max 2 words)
-    words: { riff: 'RIFF', drop: 'DROP', root: 'ROOT', stun: 'ROTTO', backup: 'BACKUP', stamp: 'TIMBRO', phase: ['', 'DECRETO', 'FUSIONE'] },
+    words: { riff: 'RIFF', drop: 'DROP', root: 'ROOT', stun: 'ROTTO', backup: 'BACKUP', stamp: 'TIMBRO', phase: ['', 'DECRETO', 'FUSIONE'], exec: 'ESEGUI', loading: 'CARICAMENTO', tap: 'TOCCA', ko: 'KO' },
+    // the EP screen after ESEGUI
+    ep: { title: 'OVERDRIVE EP', cover: 'COPERTINA IN ARRIVO', next: 'CONTINUA' },
   },
   overdrive: ['SOGLIA SUPERATA'],
   overdriveMode: ['ACCESSO ROOT'],
