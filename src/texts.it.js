@@ -333,7 +333,7 @@ export default {
     phaseDown: ['QUIETE.SYS GIÙ', 'MINISTRO GIÙ', 'FUSIONE GIÙ'],
     ko: 'ROOT TOTALE',
     // giant words tied to events (max 2 words)
-    words: { riff: 'RIFF', drop: 'DROP', root: 'ROOT' },
+    words: { riff: 'RIFF', drop: 'DROP', root: 'ROOT', stun: 'ROTTO' },
   },
   overdrive: ['SOGLIA SUPERATA'],
   overdriveMode: ['ACCESSO ROOT'],

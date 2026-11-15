@@ -10,7 +10,7 @@ import { LEVELS, FIRST_LEVEL, COUNT_IN, buildChart } from '../levels.js';
 import { rank } from '../rank.js';
 import * as A from '../audio.js';
 import { BOSS_TUNING } from '../bossTuning.js';
-import { BossShow } from '../bossShow.js';
+import { BossShow, GOLD } from '../bossShow.js';
 
 // Lane rhythm game: notes leave the soundsystem at the top and travel down a
 // perspective highway to the hit line. One scene plays any level in levels.js.
@@ -174,6 +174,8 @@ export class Play extends Phaser.Scene {
     this.boss = L.boss ? this.initBoss() : null;
     this.buildBossHud();
     this.show = this.boss ? new BossShow(this) : null;
+    // the stun zoom grows from near the top, so the HUD stays on screen
+    if (this.show) this.cameras.main.setOrigin(0.5, 0.08);
     this.badge = null;
     this.giftDone = false;
     track('level_start', { level: L.id });
@@ -397,7 +399,7 @@ export class Play extends Phaser.Scene {
     this.addScore(g.points);
     this.addOd(g.od);
     if (this.boss) this.damageBoss(n, g.key);
-    if (this.show) this.show.onHit(n);
+    if (this.show) this.show.onHit(n, g.key);
     if (n.len > 0) {
       n.st = 'hold';
       this.held[n.lane] = n;
@@ -572,13 +574,15 @@ export class Play extends Phaser.Scene {
     if (this.popup) this.popup.setAlpha(0.2); // the word has priority over any old-style window
     const t = this.wordText;
     this.tweens.killTweensOf([t, this.wordBar]);
-    t.setText(word).setAlpha(1).setScale(1.5);
-    const w = t.width + px(24);
-    const h = t.height + px(14);
+    t.setText(word).setAlpha(1).setScale(1);
+    const fit = Math.min(1, (W - px(44)) / t.width); // a long word shrinks to fit the screen
+    t.setScale(1.5 * fit);
+    const w = t.width * fit + px(24);
+    const h = t.height * fit + px(14);
     this.wordBar.clear().fillStyle(0x000000, 0.78).fillRect(CX - w / 2, t.y - h / 2, w, h);
     this.wordBar.fillStyle(COLORS.red, 1).fillRect(CX - w / 2, t.y + h / 2 - px(3), w, px(3));
     this.wordBar.setAlpha(1);
-    this.tweens.add({ targets: t, scale: 1, duration: 120, ease: 'Back.Out' });
+    this.tweens.add({ targets: t, scale: fit, duration: 120, ease: 'Back.Out' });
     this.tweens.add({ targets: [t, this.wordBar], alpha: 0, delay: ms, duration: 260 });
   }
 
@@ -1008,7 +1012,7 @@ export class Play extends Phaser.Scene {
     const i = this.bossAt(n.b);
     const seg = this.boss.segs[i];
     const combo = COMBO_DMG(this.combo);
-    const mult = (this.odMode ? BOSS_TUNING.rootDmg : 1) * (this.forged() ? BOSS_TUNING.forgeDmg : 1) * combo;
+    const mult = (this.odMode ? BOSS_TUNING.rootDmg : 1) * (this.forged() ? BOSS_TUNING.forgeDmg : 1) * combo * this.show.dmgMult();
     const dmg = ((GRADE_WEIGHT[key] || 0.4) / seg.n) * (seg.cap / BOSS_TUNING.base) * mult;
     this.takeBoss(i, dmg, n, combo >= 1.5);
   }
@@ -1116,7 +1120,7 @@ export class Play extends Phaser.Scene {
       // the last phase this fighter was in, to know if it is still standing
       let own = -1;
       for (let i = 0; i <= B.phase; i++) if (L.fighters[i].includes(f.who)) own = i;
-      const ko = own >= 0 && B.segs[own].hp === 0;
+      const ko = (own >= 0 && B.segs[own].hp === 0) || (active && this.show.stunned(sb));
       const hurt = Phaser.Math.Clamp(1 - (now - f.hurtAt) / 170, 0, 1);
       const atk = Phaser.Math.Clamp(1 - (now - f.atkAt) / 340, 0, 1);
       const key = ko ? f.who + '-ko' : hurt > 0 ? f.who + '-hurt' : atk > 0 ? f.who + '-attack' : FIGHTER_IDLE[f.who][B.phase];
@@ -1160,9 +1164,10 @@ export class Play extends Phaser.Scene {
   drawBossBar(g) {
     const B = this.boss;
     const x0 = px(38);
-    const y = px(107);
-    const h = px(9);
+    const y = px(106);
+    const h = px(7);
     const gap = px(4);
+    this.show.drawGuard(g, x0, px(115), W - px(8) - x0, px(3));
     const total = B.segs.reduce((sum, s) => sum + s.cap, 0);
     const room = W - px(8) - x0 - gap * (B.segs.length - 1);
     let x = x0;
@@ -1492,7 +1497,8 @@ export class Play extends Phaser.Scene {
       }
     }
 
-    // notes, far to near
+    // notes, far to near (gold while the boss is stunned)
+    const gold = this.show && this.show.stunned(sb);
     const gone = past * 1.25; // a little below the bottom edge
     for (let i = this.notes.length - 1; i >= 0; i--) {
       const nt = this.notes[i];
@@ -1529,7 +1535,7 @@ export class Play extends Phaser.Scene {
 
       const w = px(LANE_W * 0.72) * s;
       const h = px(18) * s;
-      const col = dead ? 0x4a1216 : holding ? 0xffffff : LANE_COLORS[nt.lane % LANE_COLORS.length];
+      const col = dead ? 0x4a1216 : holding ? 0xffffff : gold ? GOLD : LANE_COLORS[nt.lane % LANE_COLORS.length];
       g.fillStyle(0x000000, 0.6 * fade).fillRect(x - w / 2 + px(3) * s, y - h / 2 + px(3) * s, w, h);
       g.fillStyle(col, (dead ? 0.6 : 1) * fade).fillRect(x - w / 2, y - h / 2, w, h);
       if (!dead) {

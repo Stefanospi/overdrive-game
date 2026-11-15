@@ -8,6 +8,7 @@ import { BOSS_TUNING as T } from './bossTuning.js';
 // Nothing here stops the notes, the judgements or the music: freezes are visual only.
 const CX = W / 2;
 const ATTACK_MS = { riff: 420, drop: 380, root: 620 };
+export const GOLD = 0xffc83a; // the stun colour (the Minister's cane)
 
 export class BossShow {
   constructor(scene) {
@@ -20,14 +21,20 @@ export class BossShow {
     this.attacks = T.tiers.map((t) => ({ kind: t.key, t: 1 })); // one slot per attack, t = 0..1
     this.counter = { lane: 0, from: -99 };
     this.freeze = 0; // ms of visual stop left
+    this.guard = 0; // 0..guardMax: full = the boss is stunned
+    this.stunUntil = -99; // song beat
+    this.stunFrom = -99;
+    this.stuns = T.stunsPerPhase.map(() => 0); // stuns used in each phase
+    this.wasStunned = false;
     this.vis = 0; // visual clock in seconds: it stops during a freeze
   }
 
   // ---- stage A: combo attacks ---------------------------------------------------
   // Called after a note is hit, with the combo already counted.
-  onHit(n) {
+  onHit(n, key) {
     const s = this.s;
     const sb = s.songBeat();
+    this.addGuard(T.guardGain[key] || 0, sb);
     T.tiers.forEach((tier, i) => {
       if (s.combo < tier.combo || !this.armed[i]) return;
       this.armed[i] = false;
@@ -52,9 +59,59 @@ export class BossShow {
   // The combo broke (`combo` = what it was). A long one gives the boss an opening.
   onBreak(combo, lane) {
     this.armed.fill(true);
+    if (!this.stunned()) this.guard = Math.max(0, this.guard - T.guardMiss);
     if (combo < T.counterFrom) return;
+    if (!this.stunned()) this.guard *= 1 - T.counterGuardLoss;
     this.counter.lane = lane;
     this.counter.from = this.s.songBeat();
+  }
+
+  // ---- stage B: guard and stun -----------------------------------------------------
+  // Clean hits wear the guard down; when it breaks the boss is stunned: gold notes, more
+  // damage. A phase allows only so many stuns, and an empty segment needs none.
+  canStun() {
+    const B = this.s.boss;
+    return this.stuns[B.phase] < T.stunsPerPhase[B.phase] && B.segs[B.phase].hp > 0;
+  }
+
+  stunned(sb = this.s.songBeat()) {
+    return sb < this.stunUntil;
+  }
+
+  dmgMult() {
+    return this.stunned() ? T.stunDmg : 1;
+  }
+
+  addGuard(v, sb) {
+    if (this.stunned(sb) || !this.canStun()) return;
+    this.guard += v;
+    if (this.guard < T.guardMax) return;
+    const s = this.s;
+    const B = s.boss;
+    const next = B.segs[B.phase + 1];
+    this.guard = 0;
+    this.stuns[B.phase]++;
+    this.stunFrom = sb;
+    this.stunUntil = Math.min(sb + T.stunBeats, next ? next.start : Infinity);
+    s.flashWord(TEXTS.boss.words.stun, 1000, 3);
+    s.flash = 0.6;
+    s.cameras.main.shake(200, 0.01);
+    if (navigator.vibrate) navigator.vibrate([20, 30, 60]);
+  }
+
+  // The guard bar, under the health bar: silver while it fills, gold and draining during
+  // a stun, dark when this phase has no stun left.
+  drawGuard(g, x, y, w, h) {
+    const sb = this.s.songBeat();
+    g.fillStyle(COLORS.redDeep, 1).fillRect(x, y, w, h);
+    if (this.stunned(sb)) {
+      const left = (this.stunUntil - sb) / Math.max(0.01, this.stunUntil - this.stunFrom);
+      g.fillStyle(GOLD, Math.floor(sb * 4) % 2 ? 1 : 0.7).fillRect(x, y, w * Phaser.Math.Clamp(left, 0, 1), h);
+    } else if (this.canStun()) {
+      g.fillStyle(COLORS.silver, 1).fillRect(x, y, w * Math.min(1, this.guard / T.guardMax), h);
+    } else {
+      g.fillStyle(COLORS.grey, 1).fillRect(x, y, w, h);
+    }
   }
 
   // Where the attacks land: the middle of whoever is fighting now.
@@ -71,6 +128,12 @@ export class BossShow {
     this.freeze = Math.max(0, this.freeze - dt * 1000);
     const vdt = frozen ? 0 : dt;
     this.vis += vdt;
+    // the camera leans in while the boss is stunned
+    const st = this.stunned(sb);
+    if (st !== this.wasStunned) {
+      this.wasStunned = st;
+      if (!this.reduced) this.s.tweens.add({ targets: this.s.cameras.main, zoom: st ? T.stunZoom : 1, duration: st ? 180 : 400, ease: 'Quad.Out' });
+    }
     this.g.clear();
     this.dark.clear();
     this.drawAttacks(vdt);
