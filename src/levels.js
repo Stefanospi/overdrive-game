@@ -47,30 +47,31 @@ const DUB_PATTERNS = {
 };
 
 // BRAZILIAN DUB, 0:27 to 1:08 of the track: 6 playable bars of build-up, then 16 of drop.
-// The drop is charted on what is heard (tools: spectrogram + per-band analysis of the clip):
-//   lane 1  the dubstep synth stabs (strongest ones, never two lanes on one step)
-//   lane 2  the dubstep bass: a hold for every sustained bass block (0-7, 8-15, 12-15 ...)
-//   lane 0  kick thumps, only where the bass is silent
-// Grid checked: onsets sit within a few ms of the 16th grid, so timing problems are not
-// in the clip timing. m1..m13 were drafted from the signal and still need an ear check.
+// The first level, so it stays readable (rewritten after playtests: it was too busy and
+// felt out of time). Grid checked on the signal: onsets sit within 4 ms of the 16th grid,
+// so a "late" feeling came from the note choice, not the clip timing. Rules of the drop:
+//   lane 2  a hold for each sustained bass block (steps 0-7, 8-15, 3-7, 12-15)
+//   lane 1  the dubstep synth stabs (2, 6, 8, 12, 14), only the strong ones
+//   lane 0  the odd sub hit (step 3, 10), nothing else
+//   never a tap while a hold is down (the hold is the rhythm), taps at least 2 steps apart
 const BRAZILIAN_PATTERNS = {
   //    lane 0 (kick)       lane 1 (synth stabs)   lane 2 (bass holds)
   b1: ['x...............', '........x.......', '................'],
   b2: ['x...............', '........x.......', '.............x..'],
   b3: ['x...............', '........x.......', '.............x.x'],
   b4: ['............x...', 'x.......x.......', '..............x.'],
-  m1: ['................', '..x...x.x.......', 'h-------....h---'],
-  m2: ['................', '..x...x.x...x...', 'h------.........'],
-  m3: ['................', '..x...x.x.....x.', 'h-------....h---'],
-  m4: ['................', '..x...x...x..x..', 'h-------h-------'],
-  m5: ['................', 'x.....x.x.....x.', '...h----....h---'],
-  m6: ['................', 'x.x...x.x.......', '................'],
-  m7: ['................', '..x...x......x..', 'h-------h-------'],
-  m8: ['................', '..x...x.x...x...', 'h-------........'],
-  m9: ['...x............', 'x....x..x...x...', '................'],
-  m10: ['...x..........x.', 'x....x..x...x...', '................'],
-  m11: ['................', '..........x.x.x.', 'h-------h-------'],
-  m12: ['..........x..x..', 'x.x...x.x.......', '................'],
+  m1: ['................', '........x.......', 'h-------....h---'],
+  m2: ['................', '........x...x...', 'h------.........'],
+  m3: ['................', '........x.......', 'h-------....h---'],
+  m4: ['................', '................', 'h-------h-------'],
+  m5: ['................', 'x.......x.......', '...h----....h---'],
+  m6: ['................', 'x.x...x.........', '................'],
+  m7: ['................', '................', 'h-------h-------'],
+  m8: ['................', '........x...x...', 'h-------........'],
+  m9: ['...x............', 'x.......x...x...', '................'],
+  m10: ['...x............', 'x.......x...x...', '................'],
+  m11: ['................', '..........x.x.x.', 'h-------........'],
+  m12: ['..........x.....', 'x.x.....x.......', '................'],
   m13: ['................', '...x..x...x.x...', 'h-------h-------'],
   z: ['x..x..x.........', '........x.......', '................'],
 };
