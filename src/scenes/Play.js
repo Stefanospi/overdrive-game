@@ -1269,7 +1269,7 @@ export class Play extends Phaser.Scene {
     this.drawStage(sb, dt, bands, bass);
     this.drawRoad(sb);
     this.drawCensor(sb);
-    this.drawFx(dt);
+    this.drawFx(this.show && this.show.freeze > 0 ? 0 : dt); // a boss freeze also holds the sparks
     this.drawHud(time);
   }
 

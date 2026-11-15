@@ -285,12 +285,9 @@ export default {
       { bar: 18, expr: 'neutral', word: 'MASCHERA TIENE' },
       { bar: 26, expr: 'win', word: 'PROXY GIÙ' },
     ],
-    // boss: one giant word at the start of each phase (bars 1, 7 and 13 of the clip)
+    // boss: the word of phase 1. The other phases and the events are in `boss.words`.
     server: [
       { bar: 0, expr: 'neutral', word: 'CENSURA' },
-      { bar: 6, expr: 'angry', word: 'DECRETO' },
-      { bar: 12, expr: 'shout', word: 'ROOT' },
-      { bar: 21, expr: 'win', word: 'PAYLOAD' },
     ],
     dub: [
       { bar: -1, expr: 'neutral', word: 'SCANSIONE' },
@@ -333,7 +330,7 @@ export default {
     phaseDown: ['QUIETE.SYS GIÙ', 'MINISTRO GIÙ', 'FUSIONE GIÙ'],
     ko: 'ROOT TOTALE',
     // giant words tied to events (max 2 words)
-    words: { riff: 'RIFF', drop: 'DROP', root: 'ROOT', stun: 'ROTTO', backup: 'BACKUP', stamp: 'TIMBRO' },
+    words: { riff: 'RIFF', drop: 'DROP', root: 'ROOT', stun: 'ROTTO', backup: 'BACKUP', stamp: 'TIMBRO', phase: ['', 'DECRETO', 'FUSIONE'] },
   },
   overdrive: ['SOGLIA SUPERATA'],
   overdriveMode: ['ACCESSO ROOT'],

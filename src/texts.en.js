@@ -284,12 +284,9 @@ export default {
       { bar: 18, expr: 'neutral', word: 'MASK HOLDS' },
       { bar: 26, expr: 'win', word: 'PROXY DOWN' },
     ],
-    // boss: one giant word at the start of each phase (bars 1, 7 and 13 of the clip)
+    // boss: the word of phase 1. The other phases and the events are in `boss.words`.
     server: [
       { bar: 0, expr: 'neutral', word: 'CENSORSHIP' },
-      { bar: 6, expr: 'angry', word: 'DECREE' },
-      { bar: 12, expr: 'shout', word: 'ROOT' },
-      { bar: 21, expr: 'win', word: 'PAYLOAD' },
     ],
     dub: [
       { bar: -1, expr: 'neutral', word: 'SCANNING' },
@@ -332,7 +329,7 @@ export default {
     phaseDown: ['QUIETE.SYS DOWN', 'MINISTER DOWN', 'FUSION DOWN'],
     ko: 'TOTAL ROOT',
     // giant words tied to events (max 2 words)
-    words: { riff: 'RIFF', drop: 'DROP', root: 'ROOT', stun: 'BREAK', backup: 'BACKUP', stamp: 'STAMP' },
+    words: { riff: 'RIFF', drop: 'DROP', root: 'ROOT', stun: 'BREAK', backup: 'BACKUP', stamp: 'STAMP', phase: ['', 'DECREE', 'FUSION'] },
   },
   overdrive: ['THRESHOLD EXCEEDED'],
   overdriveMode: ['ROOT ACCESS'],

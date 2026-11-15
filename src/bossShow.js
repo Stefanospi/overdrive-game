@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { W, K, px, COLORS, FONT_PS, PARAMS } from './config.js';
+import { W, K, LH, px, COLORS, FONT_PS, PARAMS } from './config.js';
+import { textTexture } from './ui.js';
 import { districtState } from './progress.js';
 import { SPRITES, PALETTE, SPRITE_W, SPRITE_H } from './sprites.js';
 import { TEXTS } from './texts.js';
@@ -12,6 +13,8 @@ const CX = W / 2;
 const ATTACK_MS = { riff: 420, drop: 380, root: 620 };
 export const GOLD = 0xffc83a; // the stun colour (the Minister's cane)
 const IDLE = { quiete: 'quiete-smile', ministro: 'ministro-calm', fusion: 'fusion-idle' };
+const TRANSITION = 0.6; // seconds a phase change takes, after the freeze
+const SWIRL = 36; // bits in the fusion vortex
 const CUBES = 100; // pixel cubes: one fixed pool, nothing is allocated while playing
 const CUBE_COLORS = [COLORS.silver, COLORS.red, COLORS.paper, 0x232b4a, 0x0c0c10];
 const rnd = (i) => {
@@ -142,11 +145,15 @@ export class BossShow {
     this.giant = s.add.image(CX, this.topY, this.key).setOrigin(0.5, 0).setScale(this.sc).setDepth(-4.5).setAlpha(T.giantAlpha);
     this.holesG = s.add.graphics().setDepth(-4.45);
     this.cubesG = s.add.graphics().setDepth(-4.4);
+    this.ghost = s.add.image(CX, this.topY, this.key).setOrigin(0.5, 0).setScale(this.sc).setDepth(-4.6).setVisible(false); // the boss that is leaving
+    this.tr = { t: 9, fusion: false };
+    this.slow = 0; // seconds of slow motion left (final KO)
     this.hurtAt = -99;
     this.atkAt = -99;
     this.bob = 0;
     this.holesShown = 0;
     this.gone = false; // crumbled
+    this.koType = [];
     // where the pieces go missing: fixed spots on the body, in sprite pixels
     this.holes = [];
     for (let i = 0; i < T.holes; i++) this.holes.push({ x: 7 + Math.floor(rnd(i + 3) * 19), y: 5 + Math.floor(rnd(i + 40) * 44), w: 3 + Math.floor(rnd(i + 80) * 3) });
@@ -199,6 +206,7 @@ export class BossShow {
     const seg = B.segs[B.phase];
     const who = s.level.boss.giant[B.phase];
     if (who !== this.who) {
+      this.changePhase(this.who, who, B.phase);
       this.who = who;
       this.holesShown = 0;
     }
@@ -216,6 +224,8 @@ export class BossShow {
     const shake = this.reduced ? 0 : Math.sin(this.vis * 90) * hurt * px(3);
     g.setPosition(CX + shake, this.topY + (kneel ? px(64) : 0) - this.bob + lunge);
     g.setScale(this.sc * (1 + atk * 0.05));
+    g.setAlpha(T.giantAlpha);
+    this.drawTransition(vdt);
     if (hurt > 0.6 && !kneel && !this.reduced) g.setTintFill(0xffffff);
     else g.clearTint();
     g.setVisible(!this.gone);
@@ -239,6 +249,77 @@ export class BossShow {
     this.holesShown = Math.max(this.holesShown, n);
   }
 
+  // ---- stage F: phase changes ----------------------------------------------------------
+  // Bar 7: QUIETE.SYS falls and the Minister comes down in its place. Bar 13: FUSION, a
+  // vortex of pixels pulls the two together. Everything visual stops for half a second
+  // first (the notes do not).
+  changePhase(from, to, phase) {
+    const s = this.s;
+    if (!this.reduced) this.freeze = Math.max(this.freeze, T.transitionFreeze);
+    this.tr.t = 0;
+    this.tr.fusion = to === 'fusion';
+    this.ghost.setTexture(from + '-ko').setPosition(this.giant.x, this.giant.y).setScale(this.sc).setAngle(0).setAlpha(T.giantAlpha).setVisible(true);
+    const word = TEXTS.boss.words.phase[phase];
+    if (word) {
+      s.setMars(phase === 2 ? 'shout' : 'angry');
+      s.flashWord(word, 1100, 4);
+    }
+    s.flash = 0.5;
+    s.cameras.main.shake(240, 0.01);
+  }
+
+  drawTransition(vdt) {
+    const tr = this.tr;
+    if (tr.t >= TRANSITION) {
+      this.ghost.setVisible(false);
+      return;
+    }
+    tr.t += vdt;
+    const e = Phaser.Math.Clamp(tr.t / TRANSITION, 0, 1);
+    const g = this.giant;
+    const gh = this.ghost;
+    if (!tr.fusion) {
+      // the old one tips over and drops out, the new one comes down from above
+      gh.setY(this.topY + px(64) + px(420) * e * e).setAngle(12 * e).setAlpha(T.giantAlpha * (1 - e));
+      const d = 1 - (1 - e) * (1 - e);
+      g.setY(g.y - px(150) * (1 - d)).setAlpha(T.giantAlpha * d);
+      return;
+    }
+    // fusion: the old body is sucked into a vortex, the fused one bursts out of it
+    const to = this.aim();
+    gh.setScale(this.sc * (1 - e)).setPosition(CX, this.topY + 20 * this.sc * e).setAlpha(T.giantAlpha * (1 - e));
+    const out = Phaser.Math.Clamp((e - 0.7) / 0.3, 0, 1);
+    g.setAlpha(T.giantAlpha * out).setScale(this.sc * (1.3 - 0.3 * out));
+    const c = this.cubesG;
+    for (let i = 0; i < SWIRL; i++) {
+      const r = px(40 + 210 * rnd(i + 9)) * (1 - e);
+      const a = i * 0.9 + this.vis * (10 + 6 * rnd(i));
+      const size = px(4 + Math.floor(rnd(i + 2) * 6));
+      c.fillStyle(CUBE_COLORS[i % CUBE_COLORS.length], 0.9).fillRect(to.x + Math.cos(a) * r - size / 2, to.y + Math.sin(a) * r * 0.8 - size / 2, size, size);
+    }
+  }
+
+  // The final KO (called by the finale at ESEGUI): the giant crumbles in slow motion, the
+  // colours flip for a moment (not with reduced effects) and ROOT TOTALE lands in giant
+  // outlined type, flyer style. `gap` = seconds between the bands that let go.
+  ko(gap, power = 1) {
+    const s = this.s;
+    this.crumble(gap, power);
+    this.slow = 0.9;
+    s.flash = 1;
+    s.cameras.main.shake(500, 0.012 + 0.008 * power);
+    if (!this.reduced) {
+      s.inv.v = 1;
+      s.tweens.add({ targets: s.inv, v: 0, delay: 350, duration: 500 });
+    }
+    TEXTS.boss.ko.split(' ').forEach((word, i) => {
+      const key = textTexture(s, 'boss-ko-' + word, word, { size: 48, stroke: '#ffffff', strokeW: 2 });
+      const img = s.add.image(CX, px(LH * 0.34 + i * 58), key).setDepth(31).setAlpha(0).setScale(this.reduced ? 1 : 2.4);
+      s.tweens.add({ targets: img, alpha: 1, scale: 1, delay: gap * 2000 + i * 120, duration: 160, ease: 'Back.Out' });
+      this.koType.push(img);
+    });
+  }
+
   // The final KO: the giant falls apart into the pixels it is made of. They let go one
   // band at a time, top first, `gap` seconds apart (half a beat), so it crumbles in time.
   crumble(gap, power = 1) {
@@ -256,13 +337,15 @@ export class BossShow {
     }
   }
 
-  drawCubes(vdt) {
+  drawCubes(dt) {
     const g = this.cubesG.clear();
+    this.slow = Math.max(0, this.slow - dt);
+    const vdt = this.slow > 0 ? dt * 0.3 : dt; // slow motion slows the fall, not when the bands let go
     const grav = px(1300) * vdt;
     for (const c of this.cubes) {
       if (!c.on) continue;
       if (c.wait > 0) {
-        c.wait -= vdt; // still part of the giant
+        c.wait -= dt; // still part of the giant
       } else {
         c.life -= vdt;
         if (c.life <= 0) {
@@ -423,8 +506,8 @@ export class BossShow {
     }
     this.g.clear();
     this.dark.clear();
-    this.updateGiant(sb, vdt);
     this.drawCubes(vdt);
+    this.updateGiant(sb, vdt);
     this.drawAttacks(vdt);
     this.drawCounter(sb);
     this.updateDistricts(sb, vdt);
@@ -502,6 +585,7 @@ export class BossShow {
   destroy() {
     this.g.destroy();
     this.holesG.destroy();
+    this.ghost.destroy();
     this.back.destroy();
     this.cubesG.destroy();
     this.dark.destroy();
