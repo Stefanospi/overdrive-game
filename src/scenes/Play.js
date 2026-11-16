@@ -88,9 +88,6 @@ export class Play extends Phaser.Scene {
     this.horizon = this.hitY - this.span; // vanishing point
     this.sNear = (LH - this.horizon) / this.span; // scale at the bottom edge
     this.sFar = S_FAR;
-    // the two bass cones of the stack (logical px): the boss attacks leave from here
-    this.coneY = STACK_TOP + 152 * this.stackScale;
-    this.coneDx = (230 * this.stackScale) / 4;
   }
 
   // x of the line between lane k - 1 and lane k, at scale s
@@ -1663,7 +1660,10 @@ export class Play extends Phaser.Scene {
       quad(g, edge(l, S_FAR), yF, edge(l + 1, S_FAR), yF, edge(l + 1, 1), hit, edge(l, 1), hit);
     }
 
-    this.rings = this.rings.filter((r) => (r.life -= dt * 4) > 0);
+    // (fixed-size loops that compact in place: nothing is allocated per frame)
+    let keep = 0;
+    for (const r of this.rings) if ((r.life -= dt * 4) > 0) this.rings[keep++] = r;
+    this.rings.length = keep;
     for (const r of this.rings) {
       const grow = 1 + (1 - r.life) * 0.9;
       const w = px(LANE_W * 0.8) * grow;
@@ -1671,7 +1671,9 @@ export class Play extends Phaser.Scene {
       g.lineStyle(px(3), r.color, r.life).strokeRect(r.x - w / 2, hit - h / 2, w, h);
     }
 
-    this.parts = this.parts.filter((p) => (p.life -= dt) > 0);
+    keep = 0;
+    for (const p of this.parts) if ((p.life -= dt) > 0) this.parts[keep++] = p;
+    this.parts.length = keep;
     for (const p of this.parts) {
       p.vy += px(900) * dt;
       p.x += p.vx * dt;

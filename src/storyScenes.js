@@ -1,4 +1,4 @@
-import { W, K, px, COLORS, FONT_PS } from './config.js';
+import { K, px, COLORS, FONT_PS } from './config.js';
 
 // Procedural illustrations for the story: the quiet city, the unheard protest, the
 // chaos, Mars's wall of monitors. Drawn every frame into one Graphics object; nothing
