@@ -139,8 +139,11 @@ export class BossShow {
   // while stunned) it is on its knees. It only dies at ESEGUI (crumble).
   buildGiant() {
     const s = this.s;
-    this.sc = K * T.giantScale; // screen px per sprite pixel
-    this.topY = px(s.stackBottom + 2);
+    // The boss stands on the speaker stack, facing the player, and never reaches the
+    // highway: as tall as the room between the boss strip and the slot the notes come out of.
+    const room = s.stackBottom - T.giantFloor - T.giantTop;
+    this.sc = px(Math.max(1.5, Math.floor((room / SPRITE_H) * 2) / 2)); // screen px per sprite pixel
+    this.topY = px(T.giantTop);
     this.who = s.level.boss.giant[0];
     this.key = IDLE[this.who];
     this.giant = s.add.image(CX, this.topY, this.key).setOrigin(0.5, 0).setScale(this.sc).setDepth(-4.5).setAlpha(this.ga);
@@ -179,10 +182,10 @@ export class BossShow {
     const s = this.s;
     const t = this.dmgTexts[this.dmgAt++ % this.dmgTexts.length];
     s.tweens.killTweensOf(t);
-    const y = px(s.stackBottom + 64);
+    const y = px(s.stackBottom - 70);
     t.setText('-' + Math.max(1, Math.round(taken * 1000)))
       .setColor(strong ? '#ffffff' : '#ff7a7a')
-      .setPosition(CX + px(Phaser.Math.Between(-78, 78)), y)
+      .setPosition(CX + px(Phaser.Math.Between(-44, 44)), y)
       .setScale(strong ? 1.5 : 1)
       .setAlpha(1);
     s.tweens.add({ targets: t, y: y - px(24), alpha: 0, scale: strong ? 1.1 : 0.8, duration: 520, ease: 'Quad.Out' });
@@ -221,9 +224,9 @@ export class BossShow {
       g.setTexture(key);
     }
     if (vdt > 0) this.bob = kneel ? 0 : Math.abs(Math.sin(sb * Math.PI)) * px(4); // frozen: the pose holds
-    const lunge = Math.sin(atk * Math.PI) * px(18); // it leans down the highway at you
+    const lunge = Math.sin(atk * Math.PI) * 3 * this.sc; // it leans toward you
     const shake = this.reduced ? 0 : Math.sin(this.vis * 90) * hurt * px(3);
-    g.setPosition(CX + shake, this.topY + (kneel ? px(64) : 0) - this.bob + lunge);
+    g.setPosition(CX + shake, this.topY + (kneel ? 9 * this.sc : 0) - this.bob + lunge);
     g.setScale(this.sc * (1 + atk * 0.05));
     g.setAlpha(this.ga);
     this.drawTransition(vdt);
@@ -281,9 +284,9 @@ export class BossShow {
     const gh = this.ghost;
     if (!tr.fusion) {
       // the old one tips over and drops out, the new one comes down from above
-      gh.setY(this.topY + px(64) + px(420) * e * e).setAngle(12 * e).setAlpha(this.ga * (1 - e));
+      gh.setY(this.topY + 9 * this.sc + 70 * this.sc * e * e).setAngle(12 * e).setAlpha(this.ga * (1 - e));
       const d = 1 - (1 - e) * (1 - e);
-      g.setY(g.y - px(150) * (1 - d)).setAlpha(this.ga * d);
+      g.setY(g.y - 30 * this.sc * (1 - d)).setAlpha(this.ga * d);
       return;
     }
     // fusion: the old body is sucked into a vortex, the fused one bursts out of it
@@ -293,7 +296,7 @@ export class BossShow {
     g.setAlpha(this.ga * out).setScale(this.sc * (1.3 - 0.3 * out));
     const c = this.cubesG;
     for (let i = 0; i < SWIRL; i++) {
-      const r = px(40 + 210 * rnd(i + 9)) * (1 - e);
+      const r = (8 + 60 * rnd(i + 9)) * this.sc * (1 - e);
       const a = i * 0.9 + this.vis * (10 + 6 * rnd(i));
       const size = px(4 + Math.floor(rnd(i + 2) * 6));
       c.fillStyle(CUBE_COLORS[i % CUBE_COLORS.length], 0.9).fillRect(to.x + Math.cos(a) * r - size / 2, to.y + Math.sin(a) * r * 0.8 - size / 2, size, size);
