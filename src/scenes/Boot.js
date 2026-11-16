@@ -144,6 +144,7 @@ export class Boot extends Phaser.Scene {
         },
         LH - 64,
       ),
+      link(px(70), TEXTS.howto.link, () => go('HowTo'), LH - 64),
     ];
 
     const reveal = 140 + log.length * 170 + 120;
@@ -192,7 +193,10 @@ export class Boot extends Phaser.Scene {
           this.time.delayedCall(1300, () => {
             this.cameras.main.fadeOut(250);
             // first launch: measure the latency before the story, so the very first level is in time
-            const story = { scene: 'Story', data: { id: 'intro', next: { scene: 'Play', data: { level: FIRST_LEVEL } } } };
+            // first launch: how to play comes after the story, right before the first level
+            const play = { scene: 'Play', data: { level: FIRST_LEVEL } };
+            const after = settings.get('howtoDone', false) ? play : { scene: 'HowTo', data: { next: play } };
+            const story = { scene: 'Story', data: { id: 'intro', next: after } };
             this.time.delayedCall(260, () =>
               settings.get('calibrated', false) ? this.scene.start(story.scene, story.data) : this.scene.start('Calibrate', { next: story }),
             );

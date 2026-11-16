@@ -409,6 +409,20 @@ export default {
     hint: 'Ogni singolo accende un quartiere.',
   },
 
+  // ---- how to play (first launch, and from the title screen) ---------------------
+  howto: {
+    link: 'COME SI GIOCA',
+    next: 'AVANTI',
+    skip: 'SALTA',
+    play: 'GIOCA',
+    cards: [
+      { title: 'TOCCA A TEMPO', body: 'Le note scendono su 3 corsie. Tocca la corsia quando arrivano sulla linea.' },
+      { title: 'TIENI PREMUTO', body: 'Le note lunghe si tengono premute. Lascia quando finiscono.' },
+      { title: 'OBIETTIVO', body: 'Ogni colpo a tempo infetta il sistema. Riempi la barra fino a ACCESSO ROOT. Tre livelli, poi il boss.' },
+      { title: 'LA SQUADRA', body: 'Quando compare un riquadro in basso, toccalo: ti aiuta. Adriana a sinistra, Gabriel a destra.' },
+    ],
+  },
+
   // ---- calibration ---------------------------------------------------------------
   calibrate: {
     title: 'CALIBRAZIONE',

@@ -408,6 +408,20 @@ export default {
     hint: 'Every single lights up a district.',
   },
 
+  // ---- how to play (first launch, and from the title screen) ---------------------
+  howto: {
+    link: 'HOW TO PLAY',
+    next: 'NEXT',
+    skip: 'SKIP',
+    play: 'PLAY',
+    cards: [
+      { title: 'TAP IN TIME', body: 'Notes fall down 3 lanes. Tap the lane when they reach the line.' },
+      { title: 'HOLD', body: 'Long notes are held down. Let go when they end.' },
+      { title: 'GOAL', body: 'Every hit in time infects the system. Fill the bar up to ROOT ACCESS. Three levels, then the boss.' },
+      { title: 'THE CREW', body: 'When a box shows up at the bottom, tap it: it helps you. Adriana on the left, Gabriel on the right.' },
+    ],
+  },
+
   // ---- calibration ---------------------------------------------------------------
   calibrate: {
     title: 'CALIBRATION',

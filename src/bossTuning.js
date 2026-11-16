@@ -37,8 +37,16 @@ export const BOSS_TUNING = {
 
   // ---- stage C: the giant ----------------------------------------------------------
   // The boss stands on the speaker stack, in front of the player, above the highway.
+  // There is no speaker stack in this level: the boss takes its place and the notes come out
+  // from under its feet.
   giantTop: 124, // logical y of its head (just under the boss strip)
-  giantFloor: 16, // logical px left between its feet and the slot the notes come out of
+  giantFloor: 6, // logical px left between its feet and the slot the notes come out of
+  // Your hits are glitches: red fragments of corrupted data (Blackwall style) leave the lane
+  // you hit and fly at the boss, in jumps, and tear a bit of it on impact.
+  glitchTravel: 0.3, // s from your lane to the boss
+  glitchSteps: 7, // jumps per flight (the stutter)
+  glitchTears: 6, // red tears that stay on the boss when its segment is empty (flicker)
+  impactMs: 240,
   giantAlpha: 1,
   roadAlpha: 0.93, // highway floor opacity (as in the other levels)
   holes: 16, // pieces missing from the giant when its segment is empty

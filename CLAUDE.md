@@ -22,7 +22,9 @@ Chi lavora qui: Stefano (Stephen Mars), full stack developer. Parlagli in italia
 - **Il gioco è la promozione**: si apre come finto "aggiornamento di sicurezza" del Ministero (installer), mostra una lower third radio a inizio livello (artista, traccia, EP, data), dà un "pacchetto" per ogni traccia finita, chiude con ascolta/condividi/classifica. Data, link e premio stanno in `src/campaign.js` (data attuale: 7 febbraio 2027, indicativa).
 - Classifica online con Cloudflare Worker (`worker/`), premio ai primi 3; senza `VITE_API_URL` resta locale.
 - Accessibilità: "effetti ridotti" (`reducedFx()`), niente lampi o inversioni se attivo.
-- Popup finestra, badge di lei e parola gigante condividono la zona delle casse: il popup è uno alla volta, solo in alto, e sparisce se arriva il badge o la parola. Non aggiungere altri elementi in quella zona senza gestire la priorità.
+- Popup finestra e parola gigante condividono la zona delle casse: il popup è uno alla volta, solo in alto, e sparisce se arriva la parola. Non aggiungere altri elementi in quella zona senza gestire la priorità.
+- **Poteri della squadra = riquadri nella zona pollici** (`Play.spawnBadge`, `hitBadge`): Adriana a sinistra, Gabriel a destra, sotto la linea di colpo (164x64, margine di tocco generoso, il tocco non conta come corsia; SPAZIO da tastiera). Non rimetterli in alto.
+- **Tutorial** (scena `HowTo`, testi in `TEXTS.howto`): 4 schede animate (tocca, tieni, obiettivo, squadra). Parte da sola dopo la storia iniziale alla prima partita (`settings.howtoDone`) e dal link COME SI GIOCA nel titolo; debug `?scene=howto`.
 - Timing: la calibrazione parte da sola al primo avvio (dopo INSTALLA, prima della storia; `settings.calibrated`). In `Calibrate` (offset salvato in settings, usato da `Play.begin`). La griglia della traccia è stata misurata sul segnale: nessuna deriva.
 
 - **Storia a scene**: il capitolo 1 si apre con scene disegnate (quartiere che si spegne, piazza ignorata, droni, schermi di Mars) in `src/storyScenes.js`, con suoni (`A.sfx`) e suono di battitura per personaggio (`A.blip`, `A.typeClick`). I pannelli accettano `scene`, `caption`, `sfx`, `shake`.

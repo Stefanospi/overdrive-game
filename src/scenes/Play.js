@@ -194,6 +194,10 @@ export class Play extends Phaser.Scene {
       this.release(l);
     };
     this.input.on('pointerdown', (p) => {
+      if (this.hitBadge(p)) {
+        this.useBackup(); // a tap on the power button is not a lane press
+        return;
+      }
       const l = laneAt(p);
       this.ptrLane.set(p.id, l);
       this.press(l);
@@ -204,6 +208,7 @@ export class Play extends Phaser.Scene {
       for (const l of this.ptrLane.values()) this.release(l);
       this.ptrLane.clear();
     });
+    this.input.keyboard.on('keydown-SPACE', () => this.useBackup());
     for (const [key, l] of Object.entries(KEYS)) {
       this.input.keyboard.on('keydown-' + key, (e) => {
         if (!e.repeat) this.press(l);
@@ -640,9 +645,9 @@ export class Play extends Phaser.Scene {
   }
 
   // Old-style system window. One at a time, only in the upper part of the speaker stack,
-  // and never while a word, the helper badge or a rewind needs the same space.
+  // and never while a word or a rewind needs the same space.
   spawnPopup() {
-    if (this.popup || this.badge || this.rew || this.boss) return; // the boss stands where windows pop up
+    if (this.popup || this.rew || this.boss) return; // the boss stands where windows pop up
     const w = px(176);
     const h = px(104);
     const win = buildWindow(this, w, h, 'AVVISO.exe');
@@ -681,34 +686,40 @@ export class Play extends Phaser.Scene {
     this.tweens.add({ targets: win, alpha: 0, duration: 120, onComplete: () => win.destroy() });
   }
 
-  // ---- the helper bonus -------------------------------------------------------
-  // A badge with her face appears above the speakers for a few seconds. Tapping it is
-  // a power-up: REWIND after a streak of misses (combo and infection come back), or the
-  // free BONUS ROOT mid-level. Both also give a shield: misses are forgiven for 8 beats.
+  // ---- the crew's powers --------------------------------------------------------------
+  // Adriana (REWIND after a streak of misses, or the free BONUS ROOT mid-level) and Gabriel
+  // (ID FALSA) show up as a big button in the thumb zone, under the hit line: Adriana in the
+  // left corner, Gabriel in the right one. A tap on it (anywhere on it, with a generous margin)
+  // never counts as a lane press. Rewind and bonus root also give a shield: misses are
+  // forgiven for 8 beats. Space does the same on a keyboard.
   spawnBadge(kind) {
     if (this.badge || this.over) return;
-    this.killPopup();
-    const r = px(34);
-    const c = this.add.container(CX, px(Math.max(this.stackBottom - 126, 160))).setDepth(9.6).setScale(0.3).setAlpha(0);
-    const disc = this.add.graphics();
-    disc.fillStyle(0x000000, 0.88).fillCircle(0, 0, r);
-    disc.lineStyle(px(3), COLORS.silver, 1).strokeCircle(0, 0, r);
-    const s = K * 1.5;
-    const face = this.add.image(0, -(26 * s) / 2, kind === 'forge' ? 'grafico-happy' : 'girl-happy').setOrigin(0.5, 0).setScale(s).setCrop(0, 0, 36, 26);
+    const forge = kind === 'forge';
+    const w = px(164);
+    const h = px(64);
+    const x = forge ? W - px(90) : px(90);
+    const y = px(LH - 64);
+    const c = this.add.container(x, y + (this.reduced ? 0 : px(40))).setDepth(9.6).setAlpha(0);
+    const bg = this.add.graphics();
+    bg.fillStyle(0x000000, 0.92).fillRect(-w / 2, -h / 2, w, h);
+    bg.lineStyle(px(3), COLORS.silver, 1).strokeRect(-w / 2, -h / 2, w, h);
+    const face = this.add.image(-w / 2 + px(8), 0, forge ? 'grafico-happy' : 'girl-happy').setOrigin(0, 0.5).setScale(K * 1.25).setCrop(0, 0, 36, 26);
+    const name = this.add.text(-w / 2 + px(58), -px(10), forge ? TEXTS.forger.spawn : TEXTS.helper.spawn, { fontFamily: FONT_PS, fontSize: px(7) + 'px', color: '#ffffff' }).setOrigin(0, 0.5);
+    const action = forge ? TEXTS.forger.forge : kind === 'rewind' ? TEXTS.helper.rewind : TEXTS.helper.gift;
+    const act = this.add.text(-w / 2 + px(58), px(7), action, { fontFamily: FONT_PS, fontSize: px(8) + 'px', color: '#ff2a2a' }).setOrigin(0, 0.5);
     const ring = this.add.graphics();
-    const label = this.add
-      .text(0, r + px(9), kind === 'forge' ? TEXTS.forger.spawn : TEXTS.helper.spawn, { fontFamily: FONT_PS, fontSize: px(7) + 'px', color: '#ffffff' })
-      .setOrigin(0.5);
-    c.add([disc, face, ring, label]);
-    c.setSize(r * 2 + px(16), r * 2 + px(16));
-    c.setInteractive({ useHandCursor: true });
-    c.on('pointerdown', (p, lx, ly, ev) => {
-      if (ev && ev.stopPropagation) ev.stopPropagation();
-      this.useBackup();
-    });
-    this.tweens.add({ targets: c, scale: 1, alpha: 1, duration: 200, ease: 'Back.Out' });
-    this.badge = { c, ring, r, kind, born: this.time.now, ms: 5500 };
+    c.add([bg, face, name, act, ring]);
+    this.tweens.add({ targets: c, y, alpha: 1, duration: 180, ease: 'Back.Out' });
+    this.badge = { c, ring, w, h, x, y, kind, born: this.time.now, ms: kind === 'rewind' ? 8000 : 7000 };
     if (navigator.vibrate) navigator.vibrate(20);
+  }
+
+  // Is this touch on the power button? The margin is generous: a thumb should not have to aim.
+  hitBadge(p) {
+    const b = this.badge;
+    if (!b || this.over) return false;
+    const m = px(12);
+    return Math.abs(p.x - b.x) <= b.w / 2 + m && p.y >= b.y - b.h / 2 - m && p.y <= b.y + b.h / 2 + px(30);
   }
 
   drawBadge() {
@@ -721,15 +732,17 @@ export class Play extends Phaser.Scene {
     }
     const blink = frac < 0.25 && Math.floor(this.time.now / 120) % 2 ? 0.45 : 1;
     b.c.setAlpha(blink);
-    b.ring.clear().lineStyle(px(4), COLORS.red, 1).beginPath().arc(0, 0, b.r + px(5), -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * frac).strokePath();
+    const pulse = this.reduced ? 1 : 0.5 + 0.5 * Math.sin(this.time.now / 110);
+    const r = b.ring.clear();
+    r.lineStyle(px(3), COLORS.red, 0.35 + 0.65 * pulse).strokeRect(-b.w / 2 - px(3), -b.h / 2 - px(3), b.w + px(6), b.h + px(6));
+    r.fillStyle(COLORS.red, 1).fillRect(-b.w / 2 + px(3), b.h / 2 - px(7), (b.w - px(6)) * frac, px(4)); // time left
   }
 
   removeBadge() {
     const b = this.badge;
     if (!b) return;
     this.badge = null;
-    b.c.disableInteractive();
-    this.tweens.add({ targets: b.c, alpha: 0, scale: 0.4, duration: 160, onComplete: () => b.c.destroy() });
+    this.tweens.add({ targets: b.c, alpha: 0, duration: 160, onComplete: () => b.c.destroy() });
   }
 
   useBackup() {
@@ -1393,20 +1406,23 @@ export class Play extends Phaser.Scene {
       g.fillStyle(COLORS.red, 0.25 + env * 0.75).fillCircle(cx, cy, r * 0.36 * (1 + env * 0.35));
       if (env > 0.6) g.fillStyle(0xffffff, env).fillCircle(cx, cy, r * 0.14);
     };
-    for (let i = 0; i < 3; i++) {
-      const bx = x0 + (i * w) / 3;
-      box(bx, y0, w / 3, u(40));
-      g.fillStyle(COLORS.red, 0.15 + top * 0.85).fillRect(bx + u(12), y0 + u(15), w / 3 - u(24), u(10));
-    }
-    for (let i = 0; i < 4; i++) {
-      const bx = x0 + (i * w) / 4;
-      box(bx, y0 + u(42), w / 4, u(60));
-      cone(bx + w / 8, y0 + u(72), u(20), mid);
-    }
-    for (let i = 0; i < 2; i++) {
-      const bx = x0 + (i * w) / 2;
-      box(bx, y0 + u(104), w / 2, u(106));
-      cone(bx + w / 4, y0 + u(152), u(40), bass);
+    if (!this.boss) {
+      // (in the boss level the boss stands here instead of the speakers)
+      for (let i = 0; i < 3; i++) {
+        const bx = x0 + (i * w) / 3;
+        box(bx, y0, w / 3, u(40));
+        g.fillStyle(COLORS.red, 0.15 + top * 0.85).fillRect(bx + u(12), y0 + u(15), w / 3 - u(24), u(10));
+      }
+      for (let i = 0; i < 4; i++) {
+        const bx = x0 + (i * w) / 4;
+        box(bx, y0 + u(42), w / 4, u(60));
+        cone(bx + w / 8, y0 + u(72), u(20), mid);
+      }
+      for (let i = 0; i < 2; i++) {
+        const bx = x0 + (i * w) / 2;
+        box(bx, y0 + u(104), w / 2, u(106));
+        cone(bx + w / 4, y0 + u(152), u(40), bass);
+      }
     }
     // the slot the notes come out of
     const slotY = px(this.stackBottom - 12);

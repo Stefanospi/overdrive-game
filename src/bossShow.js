@@ -16,6 +16,8 @@ const IDLE = { quiete: 'quiete-smile', ministro: 'ministro-calm', fusion: 'fusio
 const TRANSITION = 0.6; // seconds a phase change takes, after the freeze
 const SWIRL = 36; // bits in the fusion vortex
 const CUBES = 100; // pixel cubes: one fixed pool, nothing is allocated while playing
+const SHOTS = 40; // glitch fragments in flight (fixed pool)
+const IMPACTS = 16; // glitch tears on the boss (fixed pool)
 const CUBE_COLORS = [COLORS.silver, COLORS.red, COLORS.paper, 0x232b4a, 0x0c0c10];
 const rnd = (i) => {
   const x = Math.sin(i * 12.9898 + 4.1) * 43758.5453;
@@ -51,6 +53,7 @@ export class BossShow {
     const s = this.s;
     const sb = s.songBeat();
     this.addGuard(T.guardGain[key] || 0, sb);
+    this.launch(n, key);
     T.tiers.forEach((tier, i) => {
       if (s.combo < tier.combo || !this.armed[i]) return;
       this.armed[i] = false;
@@ -132,9 +135,112 @@ export class BossShow {
     }
   }
 
+  // ---- your hits are glitches ---------------------------------------------------------
+  // Every note you hit throws a red fragment of corrupted data from its lane at the boss
+  // (two on a perfect). It flies in jumps, leaves torn trails, and tears the boss where it
+  // lands. Purely visual: the damage is dealt by `takeBoss`, as before.
+  launch(n, key) {
+    if (this.gone || !n) return;
+    const s = this.s;
+    const to = this.aim();
+    const count = key === 'perfect' ? 2 : 1;
+    for (let k = 0; k < count; k++) {
+      const sh = this.shots[this.shotAt++ % SHOTS];
+      sh.on = true;
+      sh.t = 0;
+      sh.seed = Math.floor(Math.random() * 1000);
+      sh.big = key === 'perfect';
+      sh.x0 = s.laneX(n.lane, 1) + px(Phaser.Math.Between(-5, 5));
+      sh.y0 = px(s.hitY) - px(12);
+      sh.x1 = to.x + (Math.random() - 0.5) * 16 * this.sc;
+      sh.y1 = to.y + Math.random() * 22 * this.sc;
+    }
+  }
+
+  // Where a fragment lands: a few torn red slices and some loose pixels.
+  impact(x, y) {
+    const im = this.impacts[this.impAt++ % IMPACTS];
+    im.on = true;
+    im.t = 0;
+    im.x = x;
+    im.y = y;
+    im.seed = Math.floor(Math.random() * 1000);
+    if (this.cubes.length) for (let k = 0; k < 3; k++) this.cube(x, y, px(-110 + Math.random() * 220), px(-120 - Math.random() * 80), px(3 + Math.floor(Math.random() * 3)), k % 2 ? COLORS.red : 0xffffff, 0.45);
+  }
+
+  drawGlitches(vdt) {
+    const g = this.g;
+    const steps = this.reduced ? 24 : T.glitchSteps;
+    const jit = this.reduced ? 0 : 1;
+    const at = (sh, q) => {
+      const e = q * q * 0.65 + q * 0.35; // it speeds up toward the boss
+      return [sh.x0 + (sh.x1 - sh.x0) * e, sh.y0 + (sh.y1 - sh.y0) * e];
+    };
+    const tick = Math.floor(this.vis * 28);
+    for (const sh of this.shots) {
+      if (!sh.on) continue;
+      sh.t += vdt / T.glitchTravel;
+      if (sh.t >= 1) {
+        sh.on = false;
+        this.impact(sh.x1, sh.y1);
+        continue;
+      }
+      const q = Math.floor(sh.t * steps) / steps; // it moves in jumps
+      // torn trail: wide flat slices pushed sideways, further back = thinner and fainter
+      for (let i = 3; i >= 1; i--) {
+        const [tx, ty] = at(sh, Math.max(0, q - i * 0.09));
+        const dx = (rnd(sh.seed + i * 7 + tick) - 0.5) * px(16) * jit;
+        const w = px((sh.big ? 14 : 9) - i * 2);
+        g.fillStyle(COLORS.red, 0.7 - i * 0.16).fillRect(tx + dx - w / 2, ty - px(1), w, px(2));
+      }
+      if (jit && rnd(sh.seed + tick) > 0.88) continue; // it drops out for a frame
+      const [x, y] = at(sh, q);
+      const r = px(sh.big ? 5 : 3);
+      g.fillStyle(COLORS.red, 1).fillRect(x - r, y - r, r * 2, r * 2);
+      g.fillStyle(0xffffff, 1).fillRect(x - r / 2, y - r / 2, r, r);
+      g.fillStyle(COLORS.red, 0.9).fillRect(x - r * 3, y - px(1), r * 6, px(2)); // the glitch line
+    }
+    for (const im of this.impacts) {
+      if (!im.on) continue;
+      im.t += (vdt * 1000) / T.impactMs;
+      if (im.t >= 1) {
+        im.on = false;
+        continue;
+      }
+      const a = 1 - im.t;
+      for (let i = 0; i < 5; i++) {
+        const w = px(10 + rnd(im.seed + i) * 38);
+        const dx = (rnd(im.seed + i * 3 + 1) - 0.5) * px(26) * jit;
+        g.fillStyle(i % 2 ? 0xffffff : COLORS.red, a * 0.85).fillRect(im.x + dx - w / 2, im.y + (i - 2) * px(4), w, px(2 + (i % 2)));
+      }
+      g.fillStyle(COLORS.red, a * 0.8).fillRect(im.x - px(5), im.y - px(5), px(10), px(10));
+    }
+    this.drawTears();
+  }
+
+  // Corruption that stays on the boss as its health goes: red tears across the body that
+  // flicker (still, with reduced effects).
+  drawTears() {
+    if (this.gone) return;
+    const B = this.s.boss;
+    const seg = B.segs[B.phase];
+    const lost = 1 - seg.hp / seg.cap;
+    const n = Math.ceil(lost * T.glitchTears);
+    const g = this.g;
+    const gi = this.giant;
+    const tick = Math.floor(this.vis * 10);
+    for (let i = 0; i < n; i++) {
+      if (!this.reduced && rnd(i * 7 + tick) < 0.4) continue;
+      const w = (10 + rnd(i + 5) * 26) * this.sc;
+      const x = gi.x + (rnd(i + 21) - 0.5) * 20 * this.sc - w / 2;
+      const y = gi.y + (6 + rnd(i + 11) * 46) * this.sc;
+      g.fillStyle(COLORS.red, 0.4).fillRect(x, y, w, Math.max(px(2), 1.5 * this.sc));
+    }
+  }
+
   // ---- stage C: the giant -------------------------------------------------------------
-  // The boss of the current phase stands behind the highway, as tall as the screen, and
-  // shows through it. Its state follows the health of that phase's segment: pieces go
+  // The boss of the current phase stands where the speakers used to be, in front of the
+  // player, and the notes come out from under its feet. Its state follows the health of that phase's segment: pieces go
   // missing as it drops, below half it switches to the `broken` sprite, and at zero (or
   // while stunned) it is on its knees. It only dies at ESEGUI (crumble).
   buildGiant() {
@@ -142,7 +248,7 @@ export class BossShow {
     // The boss stands on the speaker stack, facing the player, and never reaches the
     // highway: as tall as the room between the boss strip and the slot the notes come out of.
     const room = s.stackBottom - T.giantFloor - T.giantTop;
-    this.sc = px(Math.max(1.5, Math.floor((room / SPRITE_H) * 2) / 2)); // screen px per sprite pixel
+    this.sc = px(Math.max(1.5, Math.floor((room / SPRITE_H) * 4) / 4)); // screen px per sprite pixel
     this.topY = px(T.giantTop);
     this.who = s.level.boss.giant[0];
     this.key = IDLE[this.who];
@@ -164,6 +270,12 @@ export class BossShow {
     this.cubes = [];
     for (let i = 0; i < CUBES; i++) this.cubes.push({ on: false, x: 0, y: 0, vx: 0, vy: 0, size: 0, color: 0, life: 0, wait: 0 });
     this.cubeAt = 0;
+    this.shots = [];
+    for (let i = 0; i < SHOTS; i++) this.shots.push({ on: false, x0: 0, y0: 0, x1: 0, y1: 0, t: 0, seed: 0, big: false });
+    this.impacts = [];
+    for (let i = 0; i < IMPACTS; i++) this.impacts.push({ on: false, x: 0, y: 0, t: 0, seed: 0 });
+    this.shotAt = 0;
+    this.impAt = 0;
     // damage numbers: a small pool of texts, reused in turn
     const style = { fontFamily: FONT_PS, fontSize: px(9) + 'px', color: '#ffffff' };
     this.dmgTexts = [];
@@ -392,7 +504,6 @@ export class BossShow {
     const s = this.s;
     s.killPopup();
     s.flashWord(word, 800, 3);
-    if (s.badge) return; // the badge owns that spot: the word alone is enough
     const side = who === 'grafico' ? 1 : -1; // Gabriel comes in from the right
     this.cutFace.setTexture({ girl: 'girl-wink', grafico: 'grafico-wink', mars: 'mars-shout' }[who]).setCrop(0, 0, 36, 26);
     this.cutFace.setX(CX + side * px(120)).setFlipX(side > 0);
@@ -513,6 +624,7 @@ export class BossShow {
     this.drawCubes(vdt);
     this.updateGiant(sb, vdt);
     this.drawAttacks(vdt);
+    this.drawGlitches(vdt);
     this.drawCounter(sb);
     this.updateDistricts(sb, vdt);
   }
@@ -521,13 +633,13 @@ export class BossShow {
     const g = this.g;
     const s = this.s;
     const to = this.aim();
-    const y0 = px(s.coneY);
+    const y0 = px(s.hitY) - px(12); // the attacks leave from your side of the highway
     for (const a of this.attacks) {
       if (a.t >= 1) continue;
       a.t = Math.min(1, a.t + (vdt * 1000) / ATTACK_MS[a.kind]);
       const p = a.t;
       for (const side of [-1, 1]) {
-        const x0 = CX + side * px(s.coneDx);
+        const x0 = CX + side * px(56);
         if (a.kind === 'riff') {
           // bass wave: three rings ride from the cone to the boss, growing
           for (let k = 0; k < 3; k++) {

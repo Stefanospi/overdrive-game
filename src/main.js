@@ -9,14 +9,15 @@ import { Hub } from './scenes/Hub.js';
 import { Board } from './scenes/Board.js';
 import { Calibrate } from './scenes/Calibrate.js';
 import { Lang } from './scenes/Lang.js';
+import { HowTo } from './scenes/HowTo.js';
 import { hasLang } from './texts.js';
 import { initAnalytics } from './campaign.js';
 
 // The first scene in the list starts automatically; ?scene= picks another (debug).
 // First visit: choose the language before anything else loads.
-const debug = { play: Play, end: End, story: Story, hub: Hub, board: Board, calibrate: Calibrate }[PARAMS.get('scene')];
+const debug = { play: Play, end: End, story: Story, hub: Hub, board: Board, calibrate: Calibrate, howto: HowTo }[PARAMS.get('scene')];
 const first = debug || (hasLang() ? Boot : Lang);
-const scenes = [first, ...[Lang, Boot, Story, Play, End, Hub, Board, Calibrate].filter((s) => s !== first)];
+const scenes = [first, ...[Lang, Boot, Story, Play, End, Hub, Board, Calibrate, HowTo].filter((s) => s !== first)];
 initAnalytics();
 
 const start = () => {
