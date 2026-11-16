@@ -642,7 +642,7 @@ export class Play extends Phaser.Scene {
   // Old-style system window. One at a time, only in the upper part of the speaker stack,
   // and never while a word, the helper badge or a rewind needs the same space.
   spawnPopup() {
-    if (this.popup || this.badge || this.rew) return;
+    if (this.popup || this.badge || this.rew || this.boss) return; // the boss stands where windows pop up
     const w = px(176);
     const h = px(104);
     const win = buildWindow(this, w, h, 'AVVISO.exe');

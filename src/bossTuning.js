@@ -36,9 +36,11 @@ export const BOSS_TUNING = {
   stunsPerPhase: [1, 1, 2],
 
   // ---- stage C: the giant ----------------------------------------------------------
-  giantScale: 8, // logical px per sprite pixel
-  giantAlpha: 0.62, // how much it shows through the highway
-  roadAlpha: 0.7, // highway floor opacity in the boss level (0.93 elsewhere)
+  // The boss stands on the speaker stack, in front of the player, above the highway.
+  giantTop: 124, // logical y of its head (just under the boss strip)
+  giantFloor: 16, // logical px left between its feet and the slot the notes come out of
+  giantAlpha: 1,
+  roadAlpha: 0.93, // highway floor opacity (as in the other levels)
   holes: 16, // pieces missing from the giant when its segment is empty
 
   // ---- stage E: the districts help ------------------------------------------------
