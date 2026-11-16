@@ -39,6 +39,7 @@ export const BOSS_TUNING = {
   // The boss stands on the speaker stack, in front of the player, above the highway.
   // There is no speaker stack in this level: the boss takes its place and the notes come out
   // from under its feet.
+  bustRows: 32, // rows of the 58-row sprite that show: head to waist, so the boss is huge
   giantTop: 124, // logical y of its head (just under the boss strip)
   giantFloor: 6, // logical px left between its feet and the slot the notes come out of
   // Your hits are glitches: red fragments of corrupted data (Blackwall style) leave the lane
@@ -47,6 +48,15 @@ export const BOSS_TUNING = {
   glitchSteps: 7, // jumps per flight (the stutter)
   glitchTears: 6, // red tears that stay on the boss when its segment is empty (flicker)
   impactMs: 240,
+
+  // ---- the bosses' powers (they change the game; each one has a one-word warning) -------
+  droneBeats: 4, // DRONE: breaking a combo of `counterFrom`+ puts a drone on that lane, hiding its far notes
+  healFrom: 2, // RIPRISTINO: from this phase (0-based), the same break also heals the boss...
+  healBreak: 0.03, // ...by this share of the TOTAL health
+  decreeScore: 250, // DECRETO: striped notes you must NOT tap. Letting one pass gives this, +guard
+  decreeGuard: 1,
+  lockPerfects: 3, // BLOCCO: the crew's buttons come locked from phase 2; this many PERFECTs open them
+  lockMs: 9000, // how long a locked button waits
   giantAlpha: 1,
   roadAlpha: 0.93, // highway floor opacity (as in the other levels)
   holes: 16, // pieces missing from the giant when its segment is empty

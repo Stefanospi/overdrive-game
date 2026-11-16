@@ -155,6 +155,7 @@ export const LEVELS = {
     forgeBeat: 32, // phase 2: Gabriel's ID FALSA, 16 beats = bars 9-12
     autoRewindBeat: 48, // phase 3 (bar 13): the miss counter resets...
     rootBeat: 48, // ...and root access opens by itself
+    shieldBeat: 60, // phase 3: Adriana's SCUDO, behind a lock (BLOCCO)
     // The fight. A phase starts on each of these beats and has its own share of the boss's
     // health (1 = the whole boss) and its own portrait. A phase is emptied by
     // its notes plus the combo attacks and the stuns. Every balance number is in
@@ -173,6 +174,15 @@ export const LEVELS = {
       censor: [
         { from: 8, to: 16, lane: 2 },
         { from: 16, to: 24, lane: 0 },
+      ],
+      // DECRETO (phase 2): striped notes that must NOT be tapped. { bar (0-based), step, lane };
+      // each sits at least 6 steps away from any real note of its lane (checked by hand).
+      decrees: [
+        { bar: 7, step: 8, lane: 2 },
+        { bar: 8, step: 8, lane: 0 },
+        { bar: 9, step: 12, lane: 2 },
+        { bar: 10, step: 4, lane: 0 },
+        { bar: 11, step: 4, lane: 2 },
       ],
     },
     track: {

@@ -72,7 +72,9 @@ export class Hub extends Phaser.Scene {
   // A level with a chapter of its own (`<id>_intro`) plays the story first.
   enter(id) {
     const chapter = id + '_intro';
-    const play = { scene: 'Play', data: { level: id } };
+    let play = { scene: 'Play', data: { level: id } };
+    // the boss fight explains its powers every time (skippable from the second time)
+    if (LEVELS[id].boss) play = { scene: 'HowTo', data: { set: 'boss', next: play } };
     if (TEXTS.story[chapter]) this.go('Story', { id: chapter, next: play });
     else this.go(play.scene, play.data);
   }

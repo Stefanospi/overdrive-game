@@ -53,6 +53,7 @@ export class BossShow {
     const s = this.s;
     const sb = s.songBeat();
     this.addGuard(T.guardGain[key] || 0, sb);
+    s.lockStep(key); // a locked crew button opens with PERFECTs
     this.launch(n, key);
     T.tiers.forEach((tier, i) => {
       if (s.combo < tier.combo || !this.armed[i]) return;
@@ -81,10 +82,30 @@ export class BossShow {
     this.armed.fill(true);
     if (!this.stunned()) this.guard = Math.max(0, this.guard - T.guardMiss);
     if (!this.stunned() && this.s.boss.segs[this.s.boss.phase].hp > 0) this.atkAt = this.vis; // any miss: it swings at you
-    if (combo < T.counterFrom) return;
-    if (!this.stunned()) this.guard *= 1 - T.counterGuardLoss;
+    if (combo < T.counterFrom || this.stunned()) return;
+    const s = this.s;
+    const sb = s.songBeat();
+    this.guard *= 1 - T.counterGuardLoss;
     this.counter.lane = lane;
-    this.counter.from = this.s.songBeat();
+    this.counter.from = sb;
+    if (sb >= T.resultBeat) return; // after bar 19 the fight is over
+    // RIPRISTINO: from the later phases the boss also takes some health back
+    const B = s.boss;
+    const seg = B.segs[B.phase];
+    if (B.phase >= T.healFrom && seg.hp > 0) {
+      seg.hp = Math.min(seg.cap, seg.hp + T.healBreak);
+      s.flashWord(TEXTS.boss.words.heal, 900, 2);
+    } else {
+      s.flashWord(TEXTS.boss.words.drone, 900, 2);
+    }
+  }
+
+  // DRONE: the drone that came down on a lane after a long combo broke really hides that
+  // lane's far notes for `droneBeats`. Returns { lane, a } (a = 0..1 fade) or null.
+  drone(sb) {
+    const c = this.counter;
+    if (c.from < -90 || sb < c.from || sb >= c.from + T.droneBeats) return null;
+    return { lane: c.lane, a: Phaser.Math.Clamp(Math.min(sb - c.from, c.from + T.droneBeats - sb), 0, 1) };
   }
 
   // ---- stage B: guard and stun -----------------------------------------------------
@@ -208,10 +229,10 @@ export class BossShow {
         continue;
       }
       const a = 1 - im.t;
-      for (let i = 0; i < 5; i++) {
-        const w = px(10 + rnd(im.seed + i) * 38);
+      for (let i = 0; i < 4; i++) {
+        const w = px(10 + rnd(im.seed + i) * 30);
         const dx = (rnd(im.seed + i * 3 + 1) - 0.5) * px(26) * jit;
-        g.fillStyle(i % 2 ? 0xffffff : COLORS.red, a * 0.85).fillRect(im.x + dx - w / 2, im.y + (i - 2) * px(4), w, px(2 + (i % 2)));
+        g.fillStyle(i % 2 ? 0xffffff : COLORS.red, a * 0.6).fillRect(im.x + dx - w / 2, im.y + (i - 2) * px(4), w, px(2 + (i % 2)));
       }
       g.fillStyle(COLORS.red, a * 0.8).fillRect(im.x - px(5), im.y - px(5), px(10), px(10));
     }
@@ -234,7 +255,7 @@ export class BossShow {
       const w = (10 + rnd(i + 5) * 26) * this.sc;
       const x = gi.x + (rnd(i + 21) - 0.5) * 20 * this.sc - w / 2;
       const y = gi.y + (6 + rnd(i + 11) * 46) * this.sc;
-      g.fillStyle(COLORS.red, 0.4).fillRect(x, y, w, Math.max(px(2), 1.5 * this.sc));
+      g.fillStyle(COLORS.red, 0.3).fillRect(x, y, w, Math.max(px(2), 1.2 * this.sc));
     }
   }
 
@@ -248,14 +269,17 @@ export class BossShow {
     // The boss stands on the speaker stack, facing the player, and never reaches the
     // highway: as tall as the room between the boss strip and the slot the notes come out of.
     const room = s.stackBottom - T.giantFloor - T.giantTop;
-    this.sc = px(Math.max(1.5, Math.floor((room / SPRITE_H) * 4) / 4)); // screen px per sprite pixel
+    // only the top `bustRows` rows of the sprite show (head to waist): a bust, as big as the room allows
+    this.rows = Math.min(SPRITE_H, T.bustRows);
+    this.kr = 0; // rows given up while kneeling (the bottom edge stays put)
+    this.sc = px(Math.max(1.5, Math.floor((room / this.rows) * 4) / 4)); // screen px per sprite pixel
     this.topY = px(T.giantTop);
     this.who = s.level.boss.giant[0];
     this.key = IDLE[this.who];
-    this.giant = s.add.image(CX, this.topY, this.key).setOrigin(0.5, 0).setScale(this.sc).setDepth(-4.5).setAlpha(this.ga);
+    this.giant = s.add.image(CX, this.topY, this.key).setOrigin(0.5, 0).setScale(this.sc).setDepth(-4.5).setAlpha(this.ga).setCrop(0, 0, SPRITE_W, this.rows);
     this.holesG = s.add.graphics().setDepth(-4.45);
     this.cubesG = s.add.graphics().setDepth(-4.4);
-    this.ghost = s.add.image(CX, this.topY, this.key).setOrigin(0.5, 0).setScale(this.sc).setDepth(-4.6).setVisible(false); // the boss that is leaving
+    this.ghost = s.add.image(CX, this.topY, this.key).setOrigin(0.5, 0).setScale(this.sc).setDepth(-4.6).setVisible(false).setCrop(0, 0, SPRITE_W, this.rows); // the boss that is leaving
     this.tr = { t: 9, fusion: false };
     this.slow = 0; // seconds of slow motion left (final KO)
     this.hurtAt = -99;
@@ -266,7 +290,7 @@ export class BossShow {
     this.koType = [];
     // where the pieces go missing: fixed spots on the body, in sprite pixels
     this.holes = [];
-    for (let i = 0; i < T.holes; i++) this.holes.push({ x: 7 + Math.floor(rnd(i + 3) * 19), y: 5 + Math.floor(rnd(i + 40) * 44), w: 3 + Math.floor(rnd(i + 80) * 3) });
+    for (let i = 0; i < T.holes; i++) this.holes.push({ x: 7 + Math.floor(rnd(i + 3) * 19), y: 5 + Math.floor(rnd(i + 40) * (this.rows - 12)), w: 2 + Math.floor(rnd(i + 80) * 2) }); // small: the boss is drawn big
     this.cubes = [];
     for (let i = 0; i < CUBES; i++) this.cubes.push({ on: false, x: 0, y: 0, vx: 0, vy: 0, size: 0, color: 0, life: 0, wait: 0 });
     this.cubeAt = 0;
@@ -331,14 +355,16 @@ export class BossShow {
     const atk = Phaser.Math.Clamp(1 - (this.vis - this.atkAt) / 0.34, 0, 1);
     const key = kneel ? who + '-ko' : hurt > 0 ? who + '-hurt' : atk > 0 ? who + '-attack' : seg.hp < seg.cap * 0.5 ? who + '-broken' : IDLE[who];
     const g = this.giant;
-    if (key !== this.key) {
+    const kr = kneel ? 6 : 0;
+    if (key !== this.key || kr !== this.kr) {
       this.key = key;
-      g.setTexture(key);
+      this.kr = kr;
+      g.setTexture(key).setCrop(0, 0, SPRITE_W, this.rows - kr);
     }
     if (vdt > 0) this.bob = kneel ? 0 : Math.abs(Math.sin(sb * Math.PI)) * px(4); // frozen: the pose holds
     const lunge = Math.sin(atk * Math.PI) * 3 * this.sc; // it leans toward you
     const shake = this.reduced ? 0 : Math.sin(this.vis * 90) * hurt * px(3);
-    g.setPosition(CX + shake, this.topY + (kneel ? 9 * this.sc : 0) - this.bob + lunge);
+    g.setPosition(CX + shake, this.topY + this.kr * this.sc - this.bob + lunge);
     g.setScale(this.sc * (1 + atk * 0.05));
     g.setAlpha(this.ga);
     this.drawTransition(vdt);
@@ -374,7 +400,7 @@ export class BossShow {
     if (!this.reduced) this.freeze = Math.max(this.freeze, T.transitionFreeze);
     this.tr.t = 0;
     this.tr.fusion = to === 'fusion';
-    this.ghost.setTexture(from + '-ko').setPosition(this.giant.x, this.giant.y).setScale(this.sc).setAngle(0).setAlpha(this.ga).setVisible(true);
+    this.ghost.setTexture(from + '-ko').setCrop(0, 0, SPRITE_W, this.rows).setPosition(this.giant.x, this.giant.y).setScale(this.sc).setAngle(0).setAlpha(this.ga).setVisible(true);
     const word = TEXTS.boss.words.phase[phase];
     if (word) {
       s.setMars(phase === 2 ? 'shout' : 'angry');
@@ -447,7 +473,8 @@ export class BossShow {
     const x0 = g.x - (SPRITE_W / 2) * g.scaleX;
     for (let i = 0; i < rects.length; i += step) {
       const [x, y, w, h, c] = rects[i];
-      const band = Math.floor((y / SPRITE_H) * 4);
+      if (y >= this.rows) continue; // below the waist: not on show
+      const band = Math.floor((y / this.rows) * 4);
       const size = Math.min(px(14), Math.max(w, h, 2) * g.scaleX * 0.6);
       this.cube(x0 + (x + w / 2) * g.scaleX, g.y + (y + h / 2) * g.scaleX, px(-200 + Math.random() * 400) * power, px(-260 - Math.random() * 240) * power, size, parseInt(PALETTE[c].slice(1), 16), 1.6, band * gap);
     }

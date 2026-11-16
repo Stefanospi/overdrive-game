@@ -330,7 +330,7 @@ export default {
     phaseDown: ['QUIETE.SYS GIÙ', 'MINISTRO GIÙ', 'FUSIONE GIÙ'],
     ko: 'ROOT TOTALE',
     // giant words tied to events (max 2 words)
-    words: { riff: 'RIFF', drop: 'DROP', root: 'ROOT', stun: 'ROTTO', backup: 'BACKUP', stamp: 'TIMBRO', phase: ['', 'DECRETO', 'FUSIONE'], exec: 'ESEGUI', loading: 'CARICAMENTO', tap: 'TOCCA', ko: 'KO' },
+    words: { decree: 'NON TOCCARE', decreeHit: 'VIETATO', drone: 'DRONE', heal: 'RIPRISTINO', lock: 'BLOCCO', unlock: 'SBLOCCATO', riff: 'RIFF', drop: 'DROP', root: 'ROOT', stun: 'ROTTO', backup: 'BACKUP', stamp: 'TIMBRO', phase: ['', 'DECRETO', 'FUSIONE'], exec: 'ESEGUI', loading: 'CARICAMENTO', tap: 'TOCCA', ko: 'KO' },
     // the EP screen after ESEGUI
     ep: { title: 'OVERDRIVE EP', cover: 'COPERTINA IN ARRIVO', next: 'CONTINUA' },
   },
@@ -421,6 +421,17 @@ export default {
       { title: 'OBIETTIVO', body: 'Ogni colpo a tempo infetta il sistema. Riempi la barra fino a ACCESSO ROOT. Tre livelli, poi il boss.' },
       { title: 'LA SQUADRA', body: 'Quando compare un riquadro in basso, toccalo: ti aiuta. Adriana a sinistra, Gabriel a destra.' },
     ],
+    // the boss fight (every time you enter it)
+    boss: {
+      cards: [
+        { title: 'IL BOSS', body: 'Tre fasi, tre barre di vita. Ogni nota colpita toglie vita. Alla fine tocchi ESEGUI.' },
+        { title: 'LA COMBO', body: 'Più combo fai, più colpisci forte. A 10, 25 e 40 partono RIFF, DROP e ROOT.' },
+        { title: 'LA GUARDIA', body: 'I PERFETTI rompono la guardia. Boss ROTTO: note oro e danno triplo.' },
+        { title: 'DRONE', body: 'Se rompi una combo lunga, un drone copre una corsia: le note si vedono tardi. Dalla fase 3 il boss si ripristina.' },
+        { title: 'DECRETO', body: 'Le note a strisce sono decreti. NON toccarle: se le lasci passare, guadagni punti e guardia.' },
+        { title: 'BLOCCO', body: 'Il Ministero blocca i riquadri della squadra. Fai 3 PERFETTI per sbloccarli, poi toccali.' },
+      ],
+    },
   },
 
   // ---- calibration ---------------------------------------------------------------

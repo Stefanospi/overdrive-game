@@ -329,7 +329,7 @@ export default {
     phaseDown: ['QUIETE.SYS DOWN', 'MINISTER DOWN', 'FUSION DOWN'],
     ko: 'TOTAL ROOT',
     // giant words tied to events (max 2 words)
-    words: { riff: 'RIFF', drop: 'DROP', root: 'ROOT', stun: 'BREAK', backup: 'BACKUP', stamp: 'STAMP', phase: ['', 'DECREE', 'FUSION'], exec: 'EXECUTE', loading: 'LOADING', tap: 'TAP', ko: 'KO' },
+    words: { decree: 'HANDS OFF', decreeHit: 'FORBIDDEN', drone: 'DRONE', heal: 'RESTORE', lock: 'LOCKED', unlock: 'UNLOCKED', riff: 'RIFF', drop: 'DROP', root: 'ROOT', stun: 'BREAK', backup: 'BACKUP', stamp: 'STAMP', phase: ['', 'DECREE', 'FUSION'], exec: 'EXECUTE', loading: 'LOADING', tap: 'TAP', ko: 'KO' },
     // the EP screen after ESEGUI
     ep: { title: 'OVERDRIVE EP', cover: 'COVER COMING SOON', next: 'CONTINUE' },
   },
@@ -420,6 +420,17 @@ export default {
       { title: 'GOAL', body: 'Every hit in time infects the system. Fill the bar up to ROOT ACCESS. Three levels, then the boss.' },
       { title: 'THE CREW', body: 'When a box shows up at the bottom, tap it: it helps you. Adriana on the left, Gabriel on the right.' },
     ],
+    // the boss fight (every time you enter it)
+    boss: {
+      cards: [
+        { title: 'THE BOSS', body: 'Three phases, three health bars. Every note you hit takes health. At the end you tap EXECUTE.' },
+        { title: 'THE COMBO', body: 'The longer your combo, the harder you hit. At 10, 25 and 40: RIFF, DROP and ROOT.' },
+        { title: 'THE GUARD', body: 'PERFECTs break the guard. Boss BROKEN: gold notes and triple damage.' },
+        { title: 'DRONE', body: 'Break a long combo and a drone covers a lane: notes show up late. From phase 3 the boss restores itself.' },
+        { title: 'DECREE', body: 'Striped notes are decrees. Do NOT tap them: let them pass and you gain points and guard.' },
+        { title: 'LOCK', body: 'The Ministry locks the crew boxes. Land 3 PERFECTs to open them, then tap.' },
+      ],
+    },
   },
 
   // ---- calibration ---------------------------------------------------------------

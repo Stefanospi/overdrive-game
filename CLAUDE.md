@@ -84,3 +84,13 @@ Sostituisce la descrizione del capitolo 3 qui sopra dove sono diverse.
 - Freeze e rallentatore sono solo visivi (`show.freeze`, `show.slow`): note, giudizi e audio non si fermano. Unica attesa: il tocco di ESEGUI.
 - Debug: `?finale`, `?boss=good|bad` (con `?auto`), `?hp=0..1`, `?notap`, `?districts=high,mid`.
 - TODO: mappa note del boss ancora bozza; sequenza PAYLOAD completa (terminale, barra OVERDRIVE.EXP, lista pacchetti); copertina vera di Gabriel (ora segnaposto in `BossFinale.showEp`); link reali in `campaign.js`.
+
+### Boss: mezzo busto e poteri (dopo i test su telefono)
+- **Mezzo busto**: `BOSS_TUNING.bustRows` (32 di 58 righe dello sprite) ritaglia testa e spalle; il boss occupa il posto delle casse (che nel livello `server` non si disegnano) e la scala si adatta allo spazio (`BossShow.buildGiant`). In ginocchio il ritaglio perde 6 righe e il bordo basso resta fermo.
+- **I tuoi colpi sono glitch rossi** (`BossShow.launch/impact/drawGlitches`): un frammento per nota (due sul PERFETTO) dalla corsia al boss, solo grafica; strappi rossi che restano col calare della vita (`drawTears`).
+- **Poteri dei boss (cambiano il gioco, un avviso di una parola ciascuno)**, numeri in `BOSS_TUNING`:
+  - DRONE: rompere una combo >= `counterFrom` copre davvero quella corsia per `droneBeats` (`BossShow.drone`, disegnato in `Play.drawCensor`).
+  - RIPRISTINO: dalla fase `healFrom` la stessa rottura fa recuperare `healBreak` di vita totale.
+  - DECRETO (fase 2): note a strisce da NON toccare, in `boss.decrees` di `levels.js` (`bar` da 0, `step`, `lane`; sempre a >= 6 passi da note reali della stessa corsia). Toccarle = errore (`Play.decreeTap`); lasciarle passare = punti e guardia (`decreePass`). Elenco separato da `this.notes`, il rewind le riarma.
+  - BLOCCO: nel boss i riquadri di Gabriel (fase 2) e di Adriana SCUDO (`shieldBeat`, fase 3) sono bloccati finché non fai `lockPerfects` PERFETTI (`Play.lockStep`).
+- **Spiegazione del boss**: `HowTo` con `set: 'boss'` (6 schede: boss, combo, guardia, drone, decreto, blocco), `TEXTS.howto.boss`. Appare ogni volta prima del livello (da Hub e da End), la prima volta senza SALTA (`settings.bossHowto`). Debug `?scene=howto&set=boss`.

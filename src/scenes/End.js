@@ -181,8 +181,10 @@ export class End extends Phaser.Scene {
     const nextId = at >= 0 && ROADMAP[at + 1] ? ROADMAP[at + 1].id : null;
     const goNext = () => {
       const intro = nextId + '_intro';
-      if (TEXTS.story[intro]) go('Story', { id: intro, next: { scene: 'Play', data: { level: nextId } } });
-      else go('Play', { level: nextId });
+      let play = { scene: 'Play', data: { level: nextId } };
+      if (LEVELS[nextId].boss) play = { scene: 'HowTo', data: { set: 'boss', next: play } }; // the boss explains its powers first
+      if (TEXTS.story[intro]) go('Story', { id: intro, next: play });
+      else go(play.scene, play.data);
     };
     const rowY = px(LH - 74);
     if (nextId) {

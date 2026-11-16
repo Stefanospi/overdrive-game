@@ -109,6 +109,8 @@ export class Play extends Phaser.Scene {
     this.notes = chart.notes.map((n) => ({ ...n, st: 'wait', sub: null }));
     this.cues = chart.cues;
     this.endBeat = chart.end;
+    // DECRETO: striped notes you must not tap (boss phase 2), kept apart from the real notes
+    this.decrees = ((L.boss && L.boss.decrees) || []).map((d) => ({ b: d.bar * 4 + d.step / 4, lane: d.lane, st: 'wait', pts: 0 })).sort((a, b) => a.b - b.b);
     this.script = [...(TEXTS.script[L.id] || [])].sort((a, b) => a.bar - b.bar);
     this.layout();
 
@@ -394,7 +396,41 @@ export class Play extends Phaser.Scene {
         bestD = d;
       }
     }
+    let dec = null;
+    let decD = Infinity;
+    for (const d of this.decrees) {
+      if (d.b - sb > 1) break;
+      if (d.st !== 'wait' || d.lane !== l) continue;
+      const dd = Math.abs(d.b - sb) * this.beat;
+      if (dd <= OK_WIN && dd < decD) {
+        dec = d;
+        decD = dd;
+      }
+    }
+    if (dec && decD < bestD) {
+      this.decreeTap(dec);
+      return;
+    }
     if (best && bestD <= OK_WIN) this.hit(best, (sb - best.b) * this.beat);
+  }
+
+  // DECRETO: tapping a striped note is breaking the law: combo and infection go, the boss swings.
+  decreeTap(d) {
+    d.st = 'tapped';
+    this.failLane = d.lane;
+    this.fail('miss', MISS_OD);
+    this.flashWord(TEXTS.boss.words.decreeHit, 900, 3);
+    if (this.show) this.show.atkAt = this.show.vis;
+  }
+
+  // ...and letting it pass is the right call: a little score and some guard.
+  decreePass(d) {
+    d.st = 'done';
+    const s0 = this.score;
+    this.addScore(BOSS_TUNING.decreeScore);
+    d.pts = this.score - s0;
+    this.show.addGuard(BOSS_TUNING.decreeGuard, this.songBeat());
+    this.burst(this.laneX(d.lane, 1), px(this.hitY), 0xffffff, 8);
   }
 
   release(l) {
@@ -705,13 +741,26 @@ export class Play extends Phaser.Scene {
     bg.lineStyle(px(3), COLORS.silver, 1).strokeRect(-w / 2, -h / 2, w, h);
     const face = this.add.image(-w / 2 + px(8), 0, forge ? 'grafico-happy' : 'girl-happy').setOrigin(0, 0.5).setScale(K * 1.25).setCrop(0, 0, 36, 26);
     const name = this.add.text(-w / 2 + px(58), -px(10), forge ? TEXTS.forger.spawn : TEXTS.helper.spawn, { fontFamily: FONT_PS, fontSize: px(7) + 'px', color: '#ffffff' }).setOrigin(0, 0.5);
-    const action = forge ? TEXTS.forger.forge : kind === 'rewind' ? TEXTS.helper.rewind : TEXTS.helper.gift;
+    const action = forge ? TEXTS.forger.forge : kind === 'rewind' ? TEXTS.helper.rewind : kind === 'shield' ? TEXTS.helper.shield : TEXTS.helper.gift;
     const act = this.add.text(-w / 2 + px(58), px(7), action, { fontFamily: FONT_PS, fontSize: px(8) + 'px', color: '#ff2a2a' }).setOrigin(0, 0.5);
     const ring = this.add.graphics();
-    c.add([bg, face, name, act, ring]);
+    // BLOCCO: in the boss fight the later buttons come locked and open with PERFECTs
+    const lock = this.boss && (kind === 'forge' || kind === 'shield') ? BOSS_TUNING.lockPerfects : 0;
+    const lockT = this.add.text(w / 2 - px(8), 0, lock ? 'x' + lock : '', { fontFamily: FONT_PS, fontSize: px(12) + 'px', color: '#ffffff' }).setOrigin(1, 0.5);
+    c.add([bg, face, name, act, ring, lockT]);
+    if (lock) this.flashWord(TEXTS.boss.words.lock, 900, 2);
     this.tweens.add({ targets: c, y, alpha: 1, duration: 180, ease: 'Back.Out' });
-    this.badge = { c, ring, w, h, x, y, kind, born: this.time.now, ms: kind === 'rewind' ? 8000 : 7000 };
+    this.badge = { c, ring, w, h, x, y, kind, lock, lockT, born: this.time.now, ms: lock ? BOSS_TUNING.lockMs : kind === 'rewind' ? 8000 : 7000 };
     if (navigator.vibrate) navigator.vibrate(20);
+  }
+
+  // A PERFECT hit opens a locked button a notch.
+  lockStep(key) {
+    const b = this.badge;
+    if (!b || !b.lock || key !== 'perfect') return;
+    b.lock--;
+    b.lockT.setText(b.lock ? 'x' + b.lock : '');
+    if (!b.lock) this.flashWord(TEXTS.boss.words.unlock, 800, 2);
   }
 
   // Is this touch on the power button? The margin is generous: a thumb should not have to aim.
@@ -736,6 +785,7 @@ export class Play extends Phaser.Scene {
     const r = b.ring.clear();
     r.lineStyle(px(3), COLORS.red, 0.35 + 0.65 * pulse).strokeRect(-b.w / 2 - px(3), -b.h / 2 - px(3), b.w + px(6), b.h + px(6));
     r.fillStyle(COLORS.red, 1).fillRect(-b.w / 2 + px(3), b.h / 2 - px(7), (b.w - px(6)) * frac, px(4)); // time left
+    if (b.lock) r.fillStyle(0x000000, 0.55).fillRect(-b.w / 2, -b.h / 2, b.w, b.h - px(8)); // locked: dimmed
   }
 
   removeBadge() {
@@ -748,6 +798,11 @@ export class Play extends Phaser.Scene {
   useBackup() {
     const b = this.badge;
     if (!b || this.over) return;
+    if (b.lock > 0) {
+      // BLOCCO: still locked, it needs PERFECTs
+      this.tweens.add({ targets: b.c, x: b.x + px(5), duration: 40, yoyo: true, repeat: 2 });
+      return;
+    }
     const kind = b.kind;
     this.removeBadge();
     const T = TEXTS.helper;
@@ -778,10 +833,12 @@ export class Play extends Phaser.Scene {
       this.spike = 1;
       this.flash = 0.35;
       A.rewind();
-    } else {
+    } else if (kind === 'gift') {
       this.addOd(20);
       this.addScore(1000);
       this.flash = 0.5;
+    } else {
+      this.flash = 0.4; // shield: the Ministry's lock is gone, misses are forgiven
     }
     this.missRun = 0;
     if (this.show) this.show.cutIn('girl', TEXTS.boss.words.backup); // ADRIANA BACKUP
@@ -840,6 +897,12 @@ export class Play extends Phaser.Scene {
       n.odd = 0;
       n.grade = null;
       n.cb = undefined;
+    }
+    for (const d of this.decrees) {
+      if (d.b < nb - 0.01) continue;
+      this.score -= d.pts;
+      d.pts = 0;
+      d.st = 'wait';
     }
     this.score = Math.max(0, this.score);
     this.od = Phaser.Math.Clamp(this.od, 0, 99);
@@ -1185,8 +1248,11 @@ export class Play extends Phaser.Scene {
     const edge = (k, s) => CX + (k - n / 2) * px(LANE_W) * s;
     const yF = this.yOf(S_FAR);
     const yC = this.yOf(CENSOR_S);
-    for (const c of B.censor) {
-      const a = Phaser.Math.Clamp(Math.min(sb - (c.from - 1), c.to - sb), 0, 1);
+    const bars = B.censor.map((c) => ({ lane: c.lane, a: Phaser.Math.Clamp(Math.min(sb - (c.from - 1), c.to - sb), 0, 1), word: TEXTS.boss.censored }));
+    const d = this.show && this.show.drone(sb);
+    if (d) bars.push({ lane: d.lane, a: d.a, word: TEXTS.boss.words.drone });
+    for (const c of bars) {
+      const a = c.a;
       if (a <= 0) continue;
       g.fillStyle(0x000000, 0.97 * a);
       quad(g, edge(c.lane, S_FAR), yF, edge(c.lane + 1, S_FAR), yF, edge(c.lane + 1, CENSOR_S), yC, edge(c.lane, CENSOR_S), yC);
@@ -1194,6 +1260,7 @@ export class Play extends Phaser.Scene {
       g.lineBetween(edge(c.lane, CENSOR_S), yC, edge(c.lane + 1, CENSOR_S), yC);
       const sm = (S_FAR + CENSOR_S) / 2;
       this.censorTexts[c.lane]
+        .setText(c.word)
         .setPosition(this.laneX(c.lane, sm), this.yOf(sm))
         .setScale(sm * 1.7)
         .setAlpha(a);
@@ -1256,6 +1323,15 @@ export class Play extends Phaser.Scene {
           if (Math.random() < 0.5) this.burst(this.laneX(n.lane, 1), px(this.hitY), COLORS.red, 1, 0.7);
         }
       }
+    }
+    for (const d of this.rew ? [] : this.decrees) {
+      if (d.b - sb > 1) break;
+      if (d.st !== 'wait') continue;
+      if (this.auto ? sb >= d.b : (sb - d.b) * this.beat > OK_WIN) this.decreePass(d); // (the debug bot never taps one)
+    }
+    if (this.decrees.length && !this.decreeWarned && this.decrees[0].b - sb < 4 && !this.over) {
+      this.decreeWarned = true;
+      this.flashWord(TEXTS.boss.words.decree, 1000, 2);
     }
     if (this.odMode && sb >= this.odEnd) {
       this.odMode = false;
@@ -1327,6 +1403,10 @@ export class Play extends Phaser.Scene {
     }
     if (this.boss) this.updateBoss(dt);
     if (this.show) this.show.update(sb, dt);
+    if (!this.shieldDone && L.shieldBeat !== undefined && sb >= L.shieldBeat && !this.badge && !this.over) {
+      this.shieldDone = true;
+      this.spawnBadge('shield');
+    }
     if (!this.forgeDone && L.forgeBeat !== undefined && sb >= L.forgeBeat && !this.badge && !this.over) {
       this.forgeDone = true;
       this.spawnBadge('forge');
@@ -1542,6 +1622,25 @@ export class Play extends Phaser.Scene {
         g.fillStyle(0x000000, 0.35 * fade).fillRect(x - w / 2, y + h * 0.28, w, h * 0.22);
         g.fillStyle(nt.len > 0 ? COLORS.redDark : COLORS.bg, fade).fillRect(x - h * 0.3, y - h * 0.12, h * 0.6, h * 0.3);
       }
+    }
+
+    // decrees: paper notes with red stripes. Do not tap them.
+    for (const d of this.decrees) {
+      if (d.st !== 'wait' && !(this.rew && d.st !== 'wait')) continue;
+      const dt = d.b - sb;
+      if (dt > ap) break;
+      if (dt < gone) continue;
+      const s = this.sOf(Math.max(dt, gone));
+      const x = this.laneX(d.lane, s);
+      const y = this.yOf(s);
+      const fade = Phaser.Math.Clamp((1 - dt / ap) / 0.12, 0, 1);
+      const w = px(LANE_W * 0.78) * s;
+      const h = px(20) * s;
+      g.fillStyle(0x000000, 0.6 * fade).fillRect(x - w / 2 + px(3) * s, y - h / 2 + px(3) * s, w, h);
+      g.fillStyle(COLORS.paper, fade).fillRect(x - w / 2, y - h / 2, w, h);
+      g.fillStyle(COLORS.red, fade);
+      for (let k = 0; k < 5; k++) g.fillRect(x - w / 2 + (w * (k * 2 + 0.5)) / 10, y - h / 2, w / 10, h);
+      g.lineStyle(Math.max(px(1), px(2) * s), 0x000000, fade).strokeRect(x - w / 2, y - h / 2, w, h);
     }
   }
 
