@@ -193,10 +193,6 @@ export class BossShow {
     const g = this.g;
     const steps = this.reduced ? 24 : T.glitchSteps;
     const jit = this.reduced ? 0 : 1;
-    const at = (sh, q) => {
-      const e = q * q * 0.65 + q * 0.35; // it speeds up toward the boss
-      return [sh.x0 + (sh.x1 - sh.x0) * e, sh.y0 + (sh.y1 - sh.y0) * e];
-    };
     const tick = Math.floor(this.vis * 28);
     for (const sh of this.shots) {
       if (!sh.on) continue;
@@ -209,13 +205,18 @@ export class BossShow {
       const q = Math.floor(sh.t * steps) / steps; // it moves in jumps
       // torn trail: wide flat slices pushed sideways, further back = thinner and fainter
       for (let i = 3; i >= 1; i--) {
-        const [tx, ty] = at(sh, Math.max(0, q - i * 0.09));
+        const e = Math.max(0, q - i * 0.09);
+        const k = e * e * 0.65 + e * 0.35; // it speeds up toward the boss
+        const tx = sh.x0 + (sh.x1 - sh.x0) * k;
+        const ty = sh.y0 + (sh.y1 - sh.y0) * k;
         const dx = (rnd(sh.seed + i * 7 + tick) - 0.5) * px(16) * jit;
         const w = px((sh.big ? 14 : 9) - i * 2);
         g.fillStyle(COLORS.red, 0.7 - i * 0.16).fillRect(tx + dx - w / 2, ty - px(1), w, px(2));
       }
       if (jit && rnd(sh.seed + tick) > 0.88) continue; // it drops out for a frame
-      const [x, y] = at(sh, q);
+      const k = q * q * 0.65 + q * 0.35;
+      const x = sh.x0 + (sh.x1 - sh.x0) * k;
+      const y = sh.y0 + (sh.y1 - sh.y0) * k;
       const r = px(sh.big ? 5 : 3);
       g.fillStyle(COLORS.red, 1).fillRect(x - r, y - r, r * 2, r * 2);
       g.fillStyle(0xffffff, 1).fillRect(x - r / 2, y - r / 2, r, r);

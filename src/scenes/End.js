@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { K, W, H, LH, px, COLORS, FONT_PS, FONT_VT } from '../config.js';
+import { K, W, LH, px, COLORS, FONT_PS, FONT_VT } from '../config.js';
 import { LEVELS, FIRST_LEVEL, ROADMAP } from '../levels.js';
 import { accuracy, rank } from '../rank.js';
 import { registerMars } from '../sprites.js';

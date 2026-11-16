@@ -1,4 +1,4 @@
-import { SPRITES, PALETTE, SPRITE_W, SPRITE_H } from './sprites.js';
+import { SPRITES, PALETTE, SPRITE_W } from './sprites.js';
 import { accuracy, rank } from './rank.js';
 import { EP, track } from './campaign.js';
 import { TEXTS } from './texts.js';
